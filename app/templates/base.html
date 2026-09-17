@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}DAMPAK — Supervisi Guru{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Navigasi -->
+  <header class="navbar">
+    <a href="{{ url_for('main.dashboard') if current_user.is_authenticated else url_for('auth.login') }}" class="brand">
+      <span class="brand-badge">DAMPAK</span>
+    </a>
+
+    {% if current_user.is_authenticated %}
+    <nav>
+      <ul class="nav-menu">
+        <li>
+          <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+            Dashboard
+          </a>
+        </li>
+        <li>
+          <a href="{{ url_for('main.supervisions') }}" class="nav-link {% if active_page == 'supervisions' %}active{% endif %}">
+            Supervisi Awal
+          </a>
+        </li>
+        <li>
+          <a href="{{ url_for('main.rtl_dampak') }}" class="nav-link {% if active_page == 'rtl_dampak' %}active{% endif %}">
+            Supervisi DAMPAK
+          </a>
+        </li>
+        <li>
+          <a href="{{ url_for('main.supervisi_autentik') }}" class="nav-link {% if active_page == 'supervisi_autentik' %}active{% endif %}">
+            Supervisi Autentik
+          </a>
+        </li>
+        <li>
+          <a href="{{ url_for('main.analysis') }}" class="nav-link {% if active_page == 'analysis' %}active{% endif %}">
+            Analisa
+          </a>
+        </li>
+        <li>
+          <a href="{{ url_for('main.reports') }}" class="nav-link {% if active_page == 'reports' %}active{% endif %}">
+            Laporan
+          </a>
+        </li>
+
+        <li class="user-pill">
+          <span class="user-avatar">A</span>
+          <strong>{{ current_user.full_name }}</strong>
+        </li>
+
+        <li>
+          <form action="{{ url_for('auth.logout') }}" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Keluar</button>
+          </form>
+        </li>
+      </ul>
+    </nav>
+    {% endif %}
+  </header>
+
+  <!-- Konten Utama -->
+  <main class="container">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; {{ now().year if now is defined else '2026' }} DAMPAK — Sistem Informasi Supervisi Guru Berkelanjutan</p>
+  </footer>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

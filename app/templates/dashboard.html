@@ -1,0 +1,586 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — DAMPAK{% endblock %}
+
+{% block content %}
+<!-- Welcome & Tahun Ajaran Highlight Banner -->
+<div class="card card-dashed-violet" style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+  <div>
+    <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #f5f3ff; color: #7c3aed; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; margin-bottom: 0.75rem; border: 1px dashed #c4b5fd; font-weight: 600;">
+      <span>●</span> Sistem Supervisi Guru Berkelanjutan
+    </div>
+    <h1 style="font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.4rem; color: #0f172a;">
+      Dashboard Administrator
+    </h1>
+    <p style="color: #64748b; font-size: 0.95rem; max-width: 600px; margin-bottom: 0;">
+      Seluruh data capaian supervisi dikelompokkan berdasarkan <strong>Tahun Ajaran Aktif</strong>.
+    </p>
+  </div>
+
+  <div style="background: #ffffff; border: 1.5px dashed #8b5cf6; border-radius: var(--radius-md); padding: 1.1rem 1.75rem; text-align: right;">
+    <div style="color: #64748b; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; font-weight: 600;">Tahun Ajaran Aktif</div>
+    <div style="font-size: 1.5rem; font-weight: 800; color: #7c3aed;">
+      {{ stats.tahun_ajaran_aktif }}
+    </div>
+    <div style="display: inline-block; margin-top: 0.35rem;">
+      <span class="role-tag role-GURU" style="font-size: 0.75rem;">AKTIF</span>
+    </div>
+  </div>
+</div>
+
+<!-- Key Metrics Grid Dikelompokkan Berdasarkan Tahun Aktif -->
+<div class="stats-grid">
+  <div class="stat-box-modern card-dashed-blue">
+    <div>
+      <span class="stat-label">Tahun Aktif</span>
+      <div class="stat-value" style="font-size: 1.4rem; margin-top: 0.25rem; color: #2563eb;">{{ stats.tahun_ajaran_aktif }}</div>
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Basis Data Terpilih</div>
+    </div>
+    <div class="stat-icon icon-blue">📅</div>
+  </div>
+
+
+  <div class="stat-box-modern card-dashed-emerald">
+    <div>
+      <span class="stat-label">Rata-Rata Nilai</span>
+      <div class="stat-value" style="margin-top: 0.25rem; color: #059669;">{{ '%.1f'|format(stats.rata_rata_skor) }}</div>
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Skala 0 - 100</div>
+    </div>
+    <div class="stat-icon icon-emerald">⭐</div>
+  </div>
+
+  <div class="stat-box-modern card-dashed-amber">
+    <div>
+      <span class="stat-label">Capaian Baik / Sangat Baik</span>
+      <div class="stat-value" style="margin-top: 0.25rem; color: #d97706;">{{ stats.sangat_baik + stats.baik }}</div>
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">{{ stats.sangat_baik }} Sangat Baik / {{ stats.baik }} Baik</div>
+    </div>
+    <div class="stat-icon icon-amber">📈</div>
+  </div>
+
+  <div class="stat-box-modern card-dashed-purple">
+    <div>
+      <span class="stat-label">Capaian Cukup / Kurang</span>
+      <div class="stat-value" style="margin-top: 0.25rem; color: #9333ea;">{{ stats.cukup + stats.kurang }}</div>
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Perlu Pendampingan RTL</div>
+    </div>
+    <div class="stat-icon icon-purple">🎯</div>
+  </div>
+
+  <div class="stat-box-modern card-dashed-rose">
+    <div>
+      <span class="stat-label">Total Observasi Selesai</span>
+      <div class="stat-value" style="margin-top: 0.25rem; color: #e11d48;">{{ stats.selesai }}</div>
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Tercatat Lengkap</div>
+    </div>
+    <div class="stat-icon icon-rose">📊</div>
+  </div>
+</div>
+
+<!-- Section: Pengaturan Tahun Ajaran & Ringkasan Hasil Guru -->
+<div class="grid-2" style="margin-bottom: 2rem;">
+  <!-- Left: Kelola Tahun Ajaran (Dashed Cyan) -->
+  <div class="card card-dashed-cyan" style="margin-bottom: 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+      <div>
+        <h2 class="card-title" style="margin-bottom: 0.25rem;">Daftar Tahun Ajaran</h2>
+        <p class="card-subtitle" style="margin-bottom: 0;">Pilih tahun ajaran aktif untuk menyaring seluruh data supervisi sekolah.</p>
+      </div>
+      <button type="button" class="btn btn-primary" style="padding: 0.5rem 0.9rem; font-size: 0.85rem;" onclick="openModal('modalAddPeriod')">
+        + Tambah Tahun
+      </button>
+    </div>
+
+    <!-- Tabel Daftar Tahun Ajaran -->
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Tahun Ajaran</th>
+            <th>Rentang Waktu</th>
+            <th>Status</th>
+            <th style="text-align: right;">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in periods_list %}
+          <tr>
+            <td>
+              <strong style="font-size: 1rem; color: #0f172a;">{{ p.tahun_ajaran }}</strong>
+            </td>
+            <td style="font-size: 0.85rem; color: var(--text-muted);">
+              {% if p.tanggal_mulai and p.tanggal_selesai %}
+                {{ p.tanggal_mulai.strftime('%d/%m/%Y') }} - {{ p.tanggal_selesai.strftime('%d/%m/%Y') }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if p.status == 'AKTIF' %}
+                <span class="role-tag role-GURU" style="font-size: 0.75rem; padding: 0.25rem 0.65rem;">AKTIF</span>
+              {% else %}
+                <span class="role-tag" style="background-color: #f1f5f9; color: #64748b; font-size: 0.75rem; padding: 0.25rem 0.65rem;">NONAKTIF</span>
+              {% endif %}
+            </td>
+            <td style="text-align: right;">
+              <div style="display: inline-flex; gap: 0.4rem; align-items: center;">
+                <button 
+                  type="button" 
+                  class="btn btn-outline" 
+                  style="padding: 0.25rem 0.6rem; font-size: 0.8rem;"
+                  onclick="openEditModal({{ p.id }}, '{{ p.tahun_ajaran }}', '{{ p.tanggal_mulai or '' }}', '{{ p.tanggal_selesai or '' }}', '{{ p.status }}')"
+                >
+                  Ubah
+                </button>
+                
+                {% if p.status != 'AKTIF' %}
+                <form action="{{ url_for('main.activate_period', period_id=p.id) }}" method="POST" style="display: inline;">
+                  <button type="submit" class="btn btn-primary" style="padding: 0.25rem 0.6rem; font-size: 0.8rem; background-color: #059669; border-color: #059669;">
+                    Aktifkan
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+              Belum ada data tahun ajaran. Klik tombol "+ Tambah Tahun" di atas untuk menambahkan.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Right: Pintasan Alur Supervisi -->
+  <div class="card card-dashed-rose" style="margin-bottom: 0;">
+    <h2 class="card-title" style="margin-bottom: 0.25rem;">Alur Siklus Supervisi</h2>
+    <p class="card-subtitle" style="margin-bottom: 1.25rem;">Akses terpadu ke setiap tahapan supervisi untuk Tahun {{ stats.tahun_ajaran_aktif }}.</p>
+
+    <div class="pipeline-card">
+      <a href="{{ url_for('main.supervisions') }}" class="pipeline-item" style="background-color: #ffffff; border: 1.5px dashed #6366f1;">
+        <div class="pipeline-icon">📋</div>
+        <div style="flex: 1;">
+          <div style="font-weight: 700; font-size: 0.95rem;">Supervisi Awal</div>
+          <div style="font-size: 0.825rem; color: var(--text-muted);">Rekap hasil observasi pembelajaran & nilai 0–100</div>
+        </div>
+        <span style="font-weight: 800; font-size: 1.1rem; color: #4f46e5;">{{ stats.total_supervisi }}</span>
+      </a>
+
+      <a href="{{ url_for('main.rtl_dampak') }}" class="pipeline-item" style="background-color: #ffffff; border: 1.5px dashed #f59e0b;">
+        <div class="pipeline-icon">🔄</div>
+        <div style="flex: 1;">
+          <div style="font-weight: 700; font-size: 0.95rem;">Supervisi DAMPAK</div>
+          <div style="font-size: 0.825rem; color: var(--text-muted);">Rencana tindak lanjut & pendampingan terarah</div>
+        </div>
+        <span style="font-weight: 800; font-size: 1.1rem; color: #d97706;">RTL</span>
+      </a>
+
+      <a href="{{ url_for('main.supervisi_autentik') }}" class="pipeline-item" style="background-color: #ffffff; border: 1.5px dashed #10b981;">
+        <div class="pipeline-icon">🎯</div>
+        <div style="flex: 1;">
+          <div style="font-weight: 700; font-size: 0.95rem;">Supervisi Autentik</div>
+          <div style="font-size: 0.825rem; color: var(--text-muted);">Observasi autentik pasca-pendampingan</div>
+        </div>
+        <span style="font-weight: 800; font-size: 1.1rem; color: #059669;">Autentik</span>
+      </a>
+
+      <a href="{{ url_for('main.analysis') }}" class="pipeline-item" style="background-color: #ffffff; border: 1.5px dashed #a855f7;">
+        <div class="pipeline-icon">🤖</div>
+        <div style="flex: 1;">
+          <div style="font-weight: 700; font-size: 0.95rem;">Analisa</div>
+          <div style="font-size: 0.825rem; color: var(--text-muted);">Analisis komparatif skor dan rekomendasi</div>
+        </div>
+        <span style="font-weight: 800; font-size: 1.1rem; color: #9333ea;">AI</span>
+      </a>
+
+      <a href="{{ url_for('main.reports') }}" class="pipeline-item" style="background-color: #ffffff; border: 1.5px dashed #f43f5e;">
+        <div class="pipeline-icon">📊</div>
+        <div style="flex: 1;">
+          <div style="font-weight: 700; font-size: 0.95rem;">Laporan</div>
+          <div style="font-size: 0.825rem; color: var(--text-muted);">Laporan hasil supervisi dan cetak rekap</div>
+        </div>
+        <span style="font-weight: 800; font-size: 1.1rem; color: #e11d48;">Cetak</span>
+      </a>
+    </div>
+
+    <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed #fecdd3; font-size: 0.825rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+      <span>👤 Login: <strong>{{ current_user.full_name }}</strong></span>
+      <span>💾 Tahun Aktif: <strong>{{ stats.tahun_ajaran_aktif }}</strong></span>
+    </div>
+  </div>
+</div>
+
+<!-- Card Ringkasan Guru Pada Tahun Ajaran Aktif -->
+<div class="card card-dashed-indigo">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+    <div>
+      <h2 class="card-title" style="margin-bottom: 0.25rem;">Ringkasan Capaian Guru (Tahun {{ stats.tahun_ajaran_aktif }})</h2>
+      <p class="card-subtitle" style="margin-bottom: 0;">Data hasil observasi guru yang tercatat pada tahun ajaran yang aktif.</p>
+    </div>
+    <a href="{{ url_for('main.supervisions') }}" class="btn btn-primary" style="font-size: 0.85rem;">
+      Buka Modul Supervisi Awal →
+    </a>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width: 50px;">No</th>
+          <th style="width: 110px;">NIGK</th>
+          <th>Nama Guru</th>
+          <th style="width: 165px;">No WhatsApp</th>
+          <th style="text-align: center; width: 120px;">Total Skor</th>
+          <th style="text-align: center; width: 140px;">Nilai (0-100)</th>
+          <th style="text-align: center; width: 110px;">Skala (1-4)</th>
+          <th style="text-align: right; width: 100px;">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sup in supervisions %}
+        {% set cur_no_wa = (sup.guru.no_wa if sup.guru and sup.guru.no_wa else sup.no_wa) or '' %}
+        {% set sup_guru_id = sup.guru_id or 0 %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>
+            <span style="font-family: monospace; font-weight: 700; font-size: 0.85rem; color: #1e293b; background: #f1f5f9; padding: 0.2rem 0.5rem; border-radius: 4px;">
+              {{ sup.nigk or '-' }}
+            </span>
+          </td>
+          <td>
+            <strong>{{ sup.nama_guru }}</strong>
+          </td>
+          <!-- Kolom No WA (Bisa diedit inline) -->
+          <td>
+            <div class="inline-wa-container" id="wa-container-{{ sup.id }}">
+              <!-- Tampilan Normal -->
+              <div class="wa-view-mode" id="wa-view-{{ sup.id }}" style="display: flex; align-items: center; gap: 0.4rem;">
+                <span class="wa-text-val" id="wa-text-{{ sup.id }}" style="font-family: monospace; font-size: 0.85rem; font-weight: 600; color: {% if cur_no_wa %}#0f172a{% else %}#94a3b8{% endif %};">
+                  {{ cur_no_wa if cur_no_wa else 'Belum diatur' }}
+                </span>
+                <button 
+                  type="button" 
+                  class="btn-wa-edit-toggle" 
+                  onclick="startEditWa({{ sup.id }})" 
+                  title="Klik untuk ubah No WhatsApp"
+                  style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; padding: 1px 5px; font-size: 0.75rem; color: #475569;"
+                >
+                  ✏️
+                </button>
+              </div>
+
+              <!-- Input Edit Inline -->
+              <div class="wa-edit-mode" id="wa-edit-{{ sup.id }}" style="display: none; align-items: center; gap: 0.3rem;">
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="wa-input-{{ sup.id }}" 
+                  value="{{ cur_no_wa }}" 
+                  placeholder="08123456789"
+                  style="padding: 0.2rem 0.45rem; font-size: 0.8rem; width: 115px; height: 28px;"
+                  onkeydown="handleWaKey(event, {{ sup.id }}, {{ sup_guru_id }})"
+                >
+                <button 
+                  type="button" 
+                  class="btn btn-sm btn-primary" 
+                  onclick="saveInlineWa({{ sup.id }}, {{ sup_guru_id }})" 
+                  title="Simpan (Enter)"
+                  style="padding: 0.15rem 0.45rem; font-size: 0.75rem; height: 28px; background: #059669; border-color: #059669;"
+                >
+                  ✓
+                </button>
+                <button 
+                  type="button" 
+                  class="btn btn-sm btn-outline" 
+                  onclick="cancelEditWa({{ sup.id }})" 
+                  title="Batal (Esc)"
+                  style="padding: 0.15rem 0.4rem; font-size: 0.75rem; height: 28px;"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div class="wa-status-feedback" id="wa-feedback-{{ sup.id }}" style="font-size: 0.72rem; color: #059669; font-weight: 700; display: none; margin-top: 2px;">
+                ✓ Tersimpan
+              </div>
+            </div>
+          </td>
+          <td style="text-align: center;">
+            <strong style="color: #334155;">{{ sup.total_skor|int if sup.total_skor == sup.total_skor|int else sup.total_skor }}</strong>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">/ {{ sup.skor_maksimal|int }}</span>
+          </td>
+          <td style="text-align: center;">
+            <div style="display: inline-flex; align-items: center; gap: 0.4rem;">
+              <strong style="font-size: 1.05rem; color: #0f172a;">{{ '%.1f'|format(sup.nilai_akhir) }}</strong>
+              {% if sup.predikat == 'Sangat Baik' %}
+                <span class="role-tag role-GURU" style="font-size: 0.7rem;">Sangat Baik</span>
+              {% elif sup.predikat == 'Baik' %}
+                <span class="role-tag role-SUPERVISOR" style="font-size: 0.7rem;">Baik</span>
+              {% elif sup.predikat == 'Cukup' %}
+                <span class="role-tag" style="background-color: #fef3c7; color: #92400e; font-size: 0.7rem;">Cukup</span>
+              {% else %}
+                <span class="role-tag" style="background-color: #fee2e2; color: #991b1b; font-size: 0.7rem;">Kurang</span>
+              {% endif %}
+            </div>
+          </td>
+          <td style="text-align: center;">
+            <strong style="color: #4f46e5;">{{ '%.2f'|format(sup.konversi_skala_4) }}</strong>
+          </td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 0.35rem; align-items: center; justify-content: flex-end;">
+              <!-- Tombol Kirim WA (Icon Only) -->
+              {% set current_wa_link = wa_links.get(sup.id, '') %}
+              <a 
+                href="{{ current_wa_link if cur_no_wa else 'javascript:void(0)' }}" 
+                target="{{ '_blank' if cur_no_wa else '_self' }}"
+                id="btn-send-wa-{{ sup.id }}"
+                class="btn btn-icon" 
+                title="Kirim Hasil Supervisi via WhatsApp"
+                aria-label="Kirim WA"
+                onclick="handleWaSendClick(event, {{ sup.id }})"
+                style="background-color: {% if cur_no_wa %}#25D366{% else %}#94a3b8{% endif %}; color: #ffffff; border: 1px solid {% if cur_no_wa %}#1ebe5d{% else %}#cbd5e1{% endif %}; padding: 0.35rem 0.55rem; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none;"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="display: block;">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                </svg>
+              </a>
+
+              <!-- Tombol Lihat Detil Skor -->
+              <a href="{{ url_for('main.supervision_detail', supervision_id=sup.id) }}" class="btn btn-primary btn-icon" title="Lihat Detil Skor Guru" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">
+                👁️
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
+            <div style="font-weight: 600; font-size: 1rem; color: var(--text-main);">Belum ada data supervisi pada Tahun {{ stats.tahun_ajaran_aktif }}</div>
+            <p style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Silakan buka menu <strong>Supervisi Awal</strong> untuk mengunggah sheet <em>Rekap NIlai Observasi Genap</em>.
+            </p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Tambah Tahun Ajaran -->
+<div id="modalAddPeriod" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 style="font-size: 1.2rem; font-weight: 700;">Tambah Tahun Ajaran Baru</h3>
+      <button type="button" class="modal-close" onclick="closeModal('modalAddPeriod')">&times;</button>
+    </div>
+    <form action="{{ url_for('main.add_period') }}" method="POST">
+      <div class="form-group">
+        <label for="add_tahun_ajaran" class="form-label">Tahun Ajaran <span style="color: var(--danger);">*</span></label>
+        <input type="text" id="add_tahun_ajaran" name="tahun_ajaran" class="form-control" placeholder="Contoh: 2025/2026" required>
+        <span style="font-size: 0.8rem; color: var(--text-muted);">Masukkan format tahun ajaran, misal: 2025/2026 atau 2026/2027.</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label for="add_tanggal_mulai" class="form-label">Tanggal Mulai</label>
+          <input type="date" id="add_tanggal_mulai" name="tanggal_mulai" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="add_tanggal_selesai" class="form-label">Tanggal Selesai</label>
+          <input type="date" id="add_tanggal_selesai" name="tanggal_selesai" class="form-control">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top: 0.5rem;">
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+          <input type="checkbox" name="set_aktif" value="1" checked>
+          <span>Jadikan sebagai <strong>Tahun Ajaran Aktif</strong></span>
+        </label>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modalAddPeriod')">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan Tahun Ajaran</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Ubah Tahun Ajaran -->
+<div id="modalEditPeriod" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 style="font-size: 1.2rem; font-weight: 700;">Ubah Tahun Ajaran</h3>
+      <button type="button" class="modal-close" onclick="closeModal('modalEditPeriod')">&times;</button>
+    </div>
+    <form id="formEditPeriod" action="" method="POST">
+      <div class="form-group">
+        <label for="edit_tahun_ajaran" class="form-label">Tahun Ajaran <span style="color: var(--danger);">*</span></label>
+        <input type="text" id="edit_tahun_ajaran" name="tahun_ajaran" class="form-control" required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label for="edit_tanggal_mulai" class="form-label">Tanggal Mulai</label>
+          <input type="date" id="edit_tanggal_mulai" name="tanggal_mulai" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="edit_tanggal_selesai" class="form-label">Tanggal Selesai</label>
+          <input type="date" id="edit_tanggal_selesai" name="tanggal_selesai" class="form-control">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="edit_status" class="form-label">Status Tahun Ajaran</label>
+        <select id="edit_status" name="status" class="form-control">
+          <option value="AKTIF">AKTIF</option>
+          <option value="NONAKTIF">NONAKTIF</option>
+        </select>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modalEditPeriod')">Batal</button>
+        <button type="submit" class="btn btn-primary">Perbarui Tahun Ajaran</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('active');
+  }
+
+  function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove('active');
+  }
+
+  function openEditModal(periodId, tahun, tglMulai, tglSelesai, status) {
+    const form = document.getElementById('formEditPeriod');
+    if (form) {
+      form.action = '/periods/' + periodId + '/edit';
+    }
+    document.getElementById('edit_tahun_ajaran').value = tahun;
+    document.getElementById('edit_tanggal_mulai').value = tglMulai;
+    document.getElementById('edit_tanggal_selesai').value = tglSelesai;
+    document.getElementById('edit_status').value = status;
+    openModal('modalEditPeriod');
+  }
+
+  window.addEventListener('click', function(event) {
+    if (event.target.classList.contains('modal-overlay')) {
+      event.target.classList.remove('active');
+    }
+  });
+
+  /* === INLINE EDIT NO WA & KIRIM WA HANDLER === */
+  function startEditWa(supId) {
+    const viewElem = document.getElementById('wa-view-' + supId);
+    const editElem = document.getElementById('wa-edit-' + supId);
+    if (viewElem) viewElem.style.display = 'none';
+    if (editElem) editElem.style.display = 'inline-flex';
+    const input = document.getElementById('wa-input-' + supId);
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }
+
+  function cancelEditWa(supId) {
+    const viewElem = document.getElementById('wa-view-' + supId);
+    const editElem = document.getElementById('wa-edit-' + supId);
+    if (editElem) editElem.style.display = 'none';
+    if (viewElem) viewElem.style.display = 'flex';
+  }
+
+  function handleWaKey(event, supId, guruId) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      saveInlineWa(supId, guruId);
+    } else if (event.key === 'Escape') {
+      cancelEditWa(supId);
+    }
+  }
+
+  function saveInlineWa(supId, guruId) {
+    const input = document.getElementById('wa-input-' + supId);
+    if (!input) return;
+    const val = input.value.trim();
+    const endpoint = (guruId && guruId > 0) ? `/guru/${guruId}/update-wa` : `/supervisi/${supId}/update-wa`;
+
+    fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({ no_wa: val })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        // Perbarui teks nomor
+        const textElem = document.getElementById('wa-text-' + supId);
+        if (textElem) {
+          textElem.innerText = data.no_wa ? data.no_wa : 'Belum diatur';
+          textElem.style.color = data.no_wa ? '#0f172a' : '#94a3b8';
+        }
+        input.value = data.no_wa || '';
+
+        // Perbarui tombol Kirim WA
+        const btnWa = document.getElementById('btn-send-wa-' + supId);
+        if (btnWa) {
+          if (data.wa_link) {
+            btnWa.href = data.wa_link;
+            btnWa.target = '_blank';
+            btnWa.style.backgroundColor = '#25D366';
+            btnWa.style.borderColor = '#1ebe5d';
+          } else {
+            btnWa.href = 'javascript:void(0)';
+            btnWa.target = '_self';
+            btnWa.style.backgroundColor = '#94a3b8';
+            btnWa.style.borderColor = '#cbd5e1';
+          }
+        }
+
+        cancelEditWa(supId);
+
+        // Feedback tersimpan
+        const fb = document.getElementById('wa-feedback-' + supId);
+        if (fb) {
+          fb.style.display = 'block';
+          setTimeout(() => {
+            fb.style.display = 'none';
+          }, 2000);
+        }
+      } else {
+        alert('Gagal menyimpan No WhatsApp: ' + (data.message || 'Terjadi kesalahan'));
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Terjadi kesalahan koneksi saat menyimpan No WhatsApp.');
+    });
+  }
+
+  function handleWaSendClick(event, supId) {
+    const input = document.getElementById('wa-input-' + supId);
+    const val = input ? input.value.trim() : '';
+    if (!val) {
+      event.preventDefault();
+      alert('Nomor WhatsApp guru belum diatur. Silakan klik tombol pensil (✏️) untuk memasukkan nomor WhatsApp terlebih dahulu.');
+      startEditWa(supId);
+    }
+  }
+</script>
+{% endblock %}

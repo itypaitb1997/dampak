@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Masuk — DAMPAK{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-header">
+    <h1>Masuk ke DAMPAK</h1>
+    <p>Aplikasi Supervisi Guru Berkelanjutan</p>
+  </div>
+
+  <div class="card">
+    <form action="{{ url_for('auth.login', next=request.args.get('next')) }}" method="POST">
+      <div class="form-group">
+        <label for="username" class="form-label">Username</label>
+        <input 
+          type="text" 
+          id="username" 
+          name="username" 
+          class="form-control" 
+          placeholder="Masukkan username Anda" 
+          value="{{ username or '' }}" 
+          required 
+          autofocus
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="form-label">Password</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password" 
+          class="form-control" 
+          placeholder="Masukkan password Anda" 
+          required
+        >
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1rem;">
+        Masuk
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

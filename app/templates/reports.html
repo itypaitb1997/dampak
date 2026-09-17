@@ -1,0 +1,644 @@
+{% extends "base.html" %}
+
+{% block title %}Laporan &amp; Grafik Supervisi — DAMPAK{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  @media print {
+    .navbar, footer, .no-print, .btn, .user-pill {
+      display: none !important;
+    }
+    body {
+      background: #ffffff !important;
+      color: #000000 !important;
+      font-size: 11pt;
+    }
+    .card {
+      box-shadow: none !important;
+      border: 1px solid #cbd5e1 !important;
+      page-break-inside: avoid;
+      margin-bottom: 1.5rem !important;
+    }
+    .chart-container {
+      height: 280px !important;
+      page-break-inside: avoid;
+    }
+    .print-header {
+      display: block !important;
+      margin-bottom: 2rem;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 1rem;
+    }
+  }
+
+  .print-header {
+    display: none;
+  }
+
+  .chart-card {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    padding: 1.5rem;
+    position: relative;
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.25rem;
+  }
+
+  .chart-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 0.25rem;
+  }
+
+  .chart-subtitle {
+    font-size: 0.82rem;
+    color: #64748b;
+    margin-bottom: 0;
+  }
+
+  .chart-box {
+    position: relative;
+    width: 100%;
+    min-height: 280px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Print Header (Hanya tampil saat dicetak) -->
+<div class="print-header">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h2 style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #0f172a;">SMPIT ISTIQAMAH BALIKPAPAN</h2>
+      <p style="margin: 0.25rem 0 0; font-size: 0.95rem; color: #475569;">Laporan Agregat &amp; Grafik Capaian Supervisi Guru Berkelanjutan (DAMPAK)</p>
+      <div style="margin-top: 0.4rem; font-size: 0.85rem; color: #64748b;">
+        Tahun Ajaran: <strong>{{ active_period.tahun_ajaran if active_period else '2025/2026 - 2026/2027' }}</strong> | Tanggal Cetak: {{ now().strftime('%d %B %Y') if now is defined else 'September 2026' }}
+      </div>
+    </div>
+    <div style="border: 2px solid #2563eb; padding: 0.4rem 0.8rem; border-radius: 6px; text-align: center; font-weight: 800; color: #2563eb;">
+      DAMPAK
+    </div>
+  </div>
+</div>
+
+<!-- Header Banner -->
+<div class="card card-dashed-violet no-print" style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+  <div>
+    <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #f5f3ff; color: #7c3aed; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; margin-bottom: 0.75rem; border: 1px dashed #c4b5fd; font-weight: 600;">
+      <span>●</span> Analitik Data &amp; Visualisasi Komparatif
+    </div>
+    <h1 style="font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.4rem; color: #0f172a;">
+      Modul Laporan &amp; Grafik Supervisi Guru
+    </h1>
+    <p style="color: #64748b; font-size: 0.95rem; max-width: 700px; margin-bottom: 0;">
+      Laporan analitik perkembangan mutu pembelajaran dari <strong>Supervisi Awal &rarr; Supervisi DAMPAK &rarr; Supervisi Autentik</strong> serta distribusi tindak lanjut Kepala Sekolah.
+    </p>
+  </div>
+
+  <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+    <a href="{{ url_for('main.report_format_dokumen') }}" class="btn btn-primary" style="padding: 0.6rem 1.25rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; box-shadow: 0 4px 12px rgba(37,99,235,0.28);">
+      <span>📄</span> Generate &amp; Cetak Format Dokumen (Google Docs)
+    </a>
+    <button type="button" class="btn btn-outline" style="background: #ffffff; padding: 0.6rem 1.1rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem;" onclick="window.print()">
+      <span>🖨️</span> Cetak Halaman Grafik / PDF
+    </button>
+  </div>
+</div>
+
+<!-- Key Highlights Metric Cards -->
+<div class="stats-grid" style="margin-bottom: 2rem;">
+  <!-- Rata-rata Skor Autentik -->
+  <div class="stat-box-modern card-dashed-indigo">
+    <div>
+      <span class="stat-label">Rata-Rata Skor Akhir</span>
+      <div class="stat-value" style="color: #4f46e5; margin-top: 0.25rem;">
+        {{ data.avg_autentik }}
+      </div>
+      <div style="font-size: 0.8rem; color: #4338ca; margin-top: 0.2rem; font-weight: 600;">
+        Skala 0 - 100 (Kategori Baik)
+      </div>
+    </div>
+    <div class="stat-icon icon-indigo">⭐</div>
+  </div>
+
+  <!-- Pertumbuhan Sekolah -->
+  <div class="stat-box-modern card-dashed-emerald">
+    <div>
+      <span class="stat-label">Pertumbuhan Mutu Sekolah</span>
+      <div class="stat-value" style="color: #059669; margin-top: 0.25rem;">
+        {% if data.delta_total_avg >= 0 %}+{{ data.delta_total_avg }}{% else %}{{ data.delta_total_avg }}{% endif %}
+      </div>
+      <div style="font-size: 0.8rem; color: #065f46; margin-top: 0.2rem; font-weight: 600;">
+        ▲ Dari Kondisi Baseline Awal
+      </div>
+    </div>
+    <div class="stat-icon icon-emerald">📈</div>
+  </div>
+
+  <!-- Predikat Sangat Baik -->
+  <div class="stat-box-modern card-dashed-amber">
+    <div>
+      <span class="stat-label">Predikat Sangat Baik</span>
+      <div class="stat-value" style="color: #d97706; margin-top: 0.25rem;">
+        {{ data.predikat_counts.get('Sangat Baik', 0) }} / {{ data.total_guru }}
+      </div>
+      <div style="font-size: 0.8rem; color: #92400e; margin-top: 0.2rem; font-weight: 600;">
+        {{ '%.0f'|format((data.predikat_counts.get('Sangat Baik', 0) / data.total_guru) * 100) if data.total_guru else 0 }}% Populasi Guru
+      </div>
+    </div>
+    <div class="stat-icon icon-amber">🏆</div>
+  </div>
+
+  <!-- Guru Paling Berkembang -->
+  <div class="stat-box-modern card-dashed-rose">
+    <div>
+      <span class="stat-label">Kenaikan Tertinggi</span>
+      <div class="stat-value" style="color: #e11d48; margin-top: 0.25rem; font-size: 1.35rem;">
+        {{ data.most_improved.nama_guru if data.most_improved else '-' }}
+      </div>
+      <div style="font-size: 0.8rem; color: #9f1239; margin-top: 0.2rem; font-weight: 700;">
+        +{{ data.most_improved.delta_total if data.most_improved else 0 }} Poin ({{ data.most_improved.nilai_awal }} &rarr; {{ data.most_improved.nilai_autentik }})
+      </div>
+    </div>
+    <div class="stat-icon icon-rose">🚀</div>
+  </div>
+</div>
+
+<!-- Grid 2 Grafik Utama: Tren Rata-rata 3 Siklus & Sebaran Rekomendasi -->
+<div class="grid-2" style="margin-bottom: 2rem;">
+  <!-- Grafik 1: Tren Rata-rata Skor Sekolah -->
+  <div class="chart-card card-dashed-blue">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">📈 Tren Rata-Rata Skor Supervisi Sekolah</h3>
+        <p class="chart-subtitle">Perkembangan nilai agregat dari Baseline Awal, DAMPAK terjadwal, hingga Kunjungan Autentik.</p>
+      </div>
+      <span class="role-tag role-GURU" style="font-size: 0.75rem;">3 SIKLUS</span>
+    </div>
+    <div class="chart-box" style="height: 300px;">
+      <canvas id="chartTrend"></canvas>
+    </div>
+    <div style="display: flex; justify-content: space-around; border-top: 1px dashed #cbd5e1; padding-top: 1rem; margin-top: 1rem; text-align: center;">
+      <div>
+        <div style="font-size: 0.75rem; color: #64748b;">Supervisi Awal</div>
+        <div style="font-size: 1.1rem; font-weight: 800; color: #3b82f6;">{{ data.avg_awal }}</div>
+      </div>
+      <div>
+        <div style="font-size: 0.75rem; color: #64748b;">Supervisi DAMPAK</div>
+        <div style="font-size: 1.1rem; font-weight: 800; color: #6366f1;">{{ data.avg_dampak }}</div>
+      </div>
+      <div>
+        <div style="font-size: 0.75rem; color: #64748b;">Supervisi Autentik</div>
+        <div style="font-size: 1.1rem; font-weight: 800; color: #10b981;">{{ data.avg_autentik }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grafik 2: Distribusi Rekomendasi Tindak Lanjut -->
+  <div class="chart-card card-dashed-purple">
+    <div class="chart-header">
+      <div>
+        <h3 class="chart-title">🎯 Sebaran Rekomendasi Tindak Lanjut</h3>
+        <p class="chart-subtitle">Proporsi bentuk pendampingan resmi pasca dialog reflektif supervisi autentik.</p>
+      </div>
+      <span class="role-tag role-SUPERVISOR" style="font-size: 0.75rem;">6 BENTUK</span>
+    </div>
+    <div class="chart-box" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+      <canvas id="chartRecommendations"></canvas>
+    </div>
+    <div style="font-size: 0.8rem; color: #64748b; text-align: center; margin-top: 0.75rem; border-top: 1px dashed #cbd5e1; padding-top: 0.75rem;">
+      Sebagian besar guru konsisten meningkat dan direkomendasikan untuk <strong>Berbagi Praktik Baik</strong>.
+    </div>
+  </div>
+</div>
+
+<!-- Grafik 3: Analisis 3 Dimensi Pembelajaran Mendalam -->
+<div class="chart-card card-dashed-cyan" style="margin-bottom: 2rem;">
+  <div class="chart-header">
+    <div>
+      <h3 class="chart-title">🧠 Capaian 3 Dimensi Pembelajaran Mendalam Per Tahapan</h3>
+      <p class="chart-subtitle">Evaluasi persentase capaian dimensi <em>Memahami</em>, <em>Mengaplikasikan</em>, dan <em>Merefleksi</em> antar tahapan supervisi.</p>
+    </div>
+    <span class="role-tag" style="background: #e0f2fe; color: #0369a1; font-weight: 700; font-size: 0.75rem;">ANALISIS PEDAGOGIS</span>
+  </div>
+  <div class="chart-box" style="height: 320px;">
+    <canvas id="chartDimensions"></canvas>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.25rem; border-top: 1px dashed #cbd5e1; padding-top: 1rem;">
+    <div style="background: #f0fdf4; border-radius: 8px; padding: 0.75rem; border: 1px solid #bbf7d0;">
+      <div style="font-weight: 700; color: #166534; font-size: 0.85rem;">Dimensi Memahami</div>
+      <div style="font-size: 0.8rem; color: #15803d; margin-top: 0.2rem;">
+        Naik dari <strong>{{ data.dimensions_avg['awal']['memahami'] }}%</strong> &rarr; <strong>{{ data.dimensions_avg['autentik']['memahami'] }}%</strong> (+{{ '%.1f'|format(data.dimensions_avg['autentik']['memahami'] - data.dimensions_avg['awal']['memahami']) }}%)
+      </div>
+    </div>
+    <div style="background: #eff6ff; border-radius: 8px; padding: 0.75rem; border: 1px solid #bfdbfe;">
+      <div style="font-weight: 700; color: #1e40af; font-size: 0.85rem;">Dimensi Mengaplikasikan</div>
+      <div style="font-size: 0.8rem; color: #1d4ed8; margin-top: 0.2rem;">
+        Naik dari <strong>{{ data.dimensions_avg['awal']['mengaplikasikan'] }}%</strong> &rarr; <strong>{{ data.dimensions_avg['autentik']['mengaplikasikan'] }}%</strong> (+{{ '%.1f'|format(data.dimensions_avg['autentik']['mengaplikasikan'] - data.dimensions_avg['awal']['mengaplikasikan']) }}%)
+      </div>
+    </div>
+    <div style="background: #faf5ff; border-radius: 8px; padding: 0.75rem; border: 1px solid #e9d5ff;">
+      <div style="font-weight: 700; color: #6b21a8; font-size: 0.85rem;">Dimensi Merefleksi</div>
+      <div style="font-size: 0.8rem; color: #7e22ce; margin-top: 0.2rem;">
+        Stabil pada <strong>{{ data.dimensions_avg['autentik']['refleksi'] }}%</strong> (Supervisi Autentik)
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Grafik 4: Perbandingan Skor Seluruh Guru (Awal vs DAMPAK vs Autentik) -->
+<div class="chart-card card-dashed-emerald" style="margin-bottom: 2rem;">
+  <div class="chart-header">
+    <div>
+      <h3 class="chart-title">👥 Komparasi Skor Per Guru (18 Guru Terdaftar)</h3>
+      <p class="chart-subtitle">Visualisasi perbandingan capaian Supervisi Awal, Supervisi DAMPAK, dan Supervisi Autentik untuk setiap guru.</p>
+    </div>
+    <span class="role-tag role-GURU" style="font-size: 0.75rem;">18 GURU</span>
+  </div>
+  <div class="chart-box" style="height: 380px;">
+    <canvas id="chartTeachers"></canvas>
+  </div>
+</div>
+
+<!-- Tabel Laporan Komparatif Detail -->
+<div class="card" style="border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 2rem;">
+  <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); background: #fafafa; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h2 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.2rem;">
+        Tabel Rekapitulasi Capaian &amp; Rekomendasi Resmi
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 0;">
+        Dokumen rekap resmi Kepala Sekolah untuk keperluan pelaporan, akreditasi, dan pembinaan guru.
+      </p>
+    </div>
+    <a href="{{ url_for('main.report_format_dokumen') }}" class="btn btn-primary" style="padding: 0.45rem 0.95rem; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.4rem;">
+      <span>📄</span> Cetak Laporan Format Agregat
+    </a>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table" style="width: 100%; margin-bottom: 0;">
+      <thead>
+        <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+          <th style="width: 40px; text-align: center;">No</th>
+          <th style="width: 65px; text-align: center;">NIGK</th>
+          <th>Nama Guru</th>
+          <th>Mata Pelajaran</th>
+          <th style="text-align: center; width: 110px;">Awal</th>
+          <th style="text-align: center; width: 110px;">DAMPAK</th>
+          <th style="text-align: center; width: 110px;">Autentik</th>
+          <th style="text-align: center; width: 90px;">Perubahan</th>
+          <th style="text-align: center; width: 190px;">Rekomendasi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in teachers %}
+        <tr>
+          <td style="text-align: center; color: #64748b; font-weight: 600;">{{ t.no }}</td>
+          <td style="text-align: center;">
+            <span style="background: #f1f5f9; color: #334155; font-weight: 700; font-size: 0.8rem; padding: 0.15rem 0.45rem; border-radius: 4px; border: 1px solid #e2e8f0;">
+              {{ t.nigk }}
+            </span>
+          </td>
+          <td>
+            <div style="font-weight: 700; color: #0f172a;">{{ t.nama_guru }}</div>
+          </td>
+          <td style="color: #475569; font-size: 0.85rem;">{{ t.mata_pelajaran }}</td>
+          <td style="text-align: center; font-weight: 700; color: #475569;">
+            {{ '%.1f'|format(t.nilai_awal) if t.nilai_awal is not none else '-' }}
+          </td>
+          <td style="text-align: center; font-weight: 700; color: #475569;">
+            {{ '%.1f'|format(t.nilai_dampak) if t.nilai_dampak is not none else '-' }}
+          </td>
+          <td style="text-align: center; font-weight: 800; color: #7c3aed;">
+            {{ '%.1f'|format(t.nilai_autentik) if t.nilai_autentik is not none else '-' }}
+          </td>
+          <td style="text-align: center; font-weight: 700;">
+            {% if t.delta_total is not none %}
+              {% if t.delta_total > 0 %}
+                <span style="color: #059669;">+{{ t.delta_total }}</span>
+              {% elif t.delta_total < 0 %}
+                <span style="color: #e11d48;">{{ t.delta_total }}</span>
+              {% else %}
+                <span style="color: #64748b;">0.0</span>
+              {% endif %}
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td style="text-align: center;">
+            {% if t.rekomendasi == 'Berbagi Praktik Baik' %}
+              <span style="background: #ecfdf5; color: #065f46; border: 1px dashed #34d399; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.78rem; display: inline-block;">
+                🌟 Berbagi Praktik Baik
+              </span>
+            {% elif t.rekomendasi == 'Lesson Study' %}
+              <span style="background: #eff6ff; color: #1e40af; border: 1px dashed #60a5fa; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.78rem; display: inline-block;">
+                📚 Lesson Study
+              </span>
+            {% elif t.rekomendasi == 'Kolaborasi' %}
+              <span style="background: #f5f3ff; color: #5b21b6; border: 1px dashed #a78bfa; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.78rem; display: inline-block;">
+                🤝 Kolaborasi
+              </span>
+            {% elif t.rekomendasi == 'Coaching' %}
+              <span style="background: #fffbeb; color: #92400e; border: 1px dashed #fbbf24; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.78rem; display: inline-block;">
+                🎯 Coaching
+              </span>
+            {% elif t.rekomendasi == 'Supervisi Autentik' %}
+              <span style="background: #fdf4ff; color: #86198f; border: 1px dashed #e879f9; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.78rem; display: inline-block;">
+                🔍 Supervisi Autentik
+              </span>
+            {% elif t.rekomendasi == 'Kunjungan Pembelajaran' %}
+              <span style="background: #f0fdfa; color: #115e59; border: 1px dashed #2dd4bf; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 9999px; font-size: 0.78rem; display: inline-block;">
+                🏫 Kunjungan Pembelajaran
+              </span>
+            {% else %}
+              <span style="background: #f1f5f9; color: #475569; font-size: 0.78rem; padding: 0.25rem 0.5rem; border-radius: 9999px;">
+                {{ t.rekomendasi }}
+              </span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Legalitas Cetak Kepala Sekolah -->
+<div style="margin-top: 2rem; display: flex; justify-content: flex-end; padding: 1rem 0;">
+  <div style="text-align: center; min-width: 250px;">
+    <div>Balikpapan, {{ now().strftime('%d %B %Y') if now is defined else '17 September 2026' }}</div>
+    <div style="margin-top: 0.25rem; font-weight: 600;">Kepala Sekolah / Supervisor</div>
+    <div style="height: 60px;"></div>
+    <div style="font-weight: 800; text-decoration: underline;">Administrator Sistem, M.Pd.</div>
+    <div style="font-size: 0.85rem; color: #64748b;">NIP. 198501152010011002</div>
+  </div>
+</div>
+
+<!-- Render Chart.js Scripts -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Data dari Backend Python
+  const trendData = {{ data.chart_trend | tojson }};
+  const dimData = {{ data.chart_dimensions | tojson }};
+  const recData = {{ data.chart_recommendations | tojson }};
+  const teacherData = {{ data.chart_teachers | tojson }};
+
+  // 1. Grafik Tren Rata-rata Sekolah
+  const ctxTrend = document.getElementById('chartTrend');
+  if (ctxTrend && typeof Chart !== 'undefined') {
+    new Chart(ctxTrend, {
+      type: 'line',
+      data: {
+        labels: trendData.labels,
+        datasets: [{
+          label: 'Rata-Rata Skor Sekolah',
+          data: trendData.values,
+          borderColor: '#4f46e5',
+          backgroundColor: 'rgba(79, 70, 229, 0.12)',
+          borderWidth: 3,
+          tension: 0.35,
+          fill: true,
+          pointBackgroundColor: '#4f46e5',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          pointRadius: 6,
+          pointHoverRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            min: Math.floor(Math.min(...trendData.values) - 2),
+            max: Math.ceil(Math.max(...trendData.values) + 2),
+            ticks: {
+              stepSize: 1,
+              font: { weight: '600' }
+            },
+            grid: { color: 'rgba(226, 232, 240, 0.6)' }
+          },
+          x: {
+            ticks: { font: { weight: '700' } },
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                return ' Skor Rata-rata: ' + ctx.parsed.y.toFixed(2);
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // 2. Grafik Sebaran Rekomendasi (Doughnut)
+  const ctxRec = document.getElementById('chartRecommendations');
+  if (ctxRec && typeof Chart !== 'undefined') {
+    // Filter out 0 counts for doughnut clarity
+    const filteredLabels = [];
+    const filteredCounts = [];
+    const baseColors = {
+      'Berbagi Praktik Baik': '#10b981',
+      'Lesson Study': '#3b82f6',
+      'Kolaborasi': '#8b5cf6',
+      'Coaching': '#f59e0b',
+      'Supervisi Autentik': '#d946ef',
+      'Kunjungan Pembelajaran': '#06b6d4'
+    };
+    const activeColors = [];
+
+    recData.labels.forEach((label, idx) => {
+      const count = recData.counts[idx];
+      if (count > 0) {
+        filteredLabels.push(label);
+        filteredCounts.push(count);
+        activeColors.push(baseColors[label] || '#94a3b8');
+      }
+    });
+
+    new Chart(ctxRec, {
+      type: 'doughnut',
+      data: {
+        labels: filteredLabels,
+        datasets: [{
+          data: filteredCounts,
+          backgroundColor: activeColors,
+          borderWidth: 2,
+          borderColor: '#ffffff',
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 14,
+              font: { size: 12, weight: '600' },
+              padding: 12
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                const total = filteredCounts.reduce((a, b) => a + b, 0);
+                const pct = ((ctx.parsed / total) * 100).toFixed(1);
+                return ' ' + ctx.label + ': ' + ctx.parsed + ' Guru (' + pct + '%)';
+              }
+            }
+          }
+        },
+        cutout: '65%'
+      }
+    });
+  }
+
+  // 3. Grafik 3 Dimensi Pembelajaran Mendalam
+  const ctxDim = document.getElementById('chartDimensions');
+  if (ctxDim && typeof Chart !== 'undefined') {
+    new Chart(ctxDim, {
+      type: 'bar',
+      data: {
+        labels: dimData.labels,
+        datasets: [
+          {
+            label: 'Supervisi Awal (Baseline)',
+            data: dimData.series_awal,
+            backgroundColor: '#94a3b8',
+            borderRadius: 6
+          },
+          {
+            label: 'Supervisi DAMPAK',
+            data: dimData.series_dampak,
+            backgroundColor: '#6366f1',
+            borderRadius: 6
+          },
+          {
+            label: 'Supervisi Autentik',
+            data: dimData.series_autentik,
+            backgroundColor: '#10b981',
+            borderRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            min: 50,
+            max: 100,
+            ticks: {
+              callback: function(v) { return v + '%'; },
+              font: { weight: '600' }
+            },
+            grid: { color: 'rgba(226, 232, 240, 0.6)' }
+          },
+          x: {
+            ticks: { font: { weight: '700', size: 13 } },
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { font: { weight: '600' }, boxWidth: 14 }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y + '%';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // 4. Grafik Komparasi Seluruh Guru (Horizontal Bar)
+  const ctxTeachers = document.getElementById('chartTeachers');
+  if (ctxTeachers && typeof Chart !== 'undefined') {
+    new Chart(ctxTeachers, {
+      type: 'bar',
+      data: {
+        labels: teacherData.names,
+        datasets: [
+          {
+            label: 'Supervisi Awal',
+            data: teacherData.awal,
+            backgroundColor: '#cbd5e1',
+            borderRadius: 4
+          },
+          {
+            label: 'Supervisi DAMPAK',
+            data: teacherData.dampak,
+            backgroundColor: '#818cf8',
+            borderRadius: 4
+          },
+          {
+            label: 'Supervisi Autentik',
+            data: teacherData.autentik,
+            backgroundColor: '#34d399',
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            min: 65,
+            max: 100,
+            ticks: { font: { weight: '600' } },
+            grid: { color: 'rgba(226, 232, 240, 0.6)' }
+          },
+          x: {
+            ticks: {
+              font: { weight: '600', size: 11 },
+              autoSkip: false,
+              maxRotation: 45,
+              minRotation: 45
+            },
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { font: { weight: '600' }, boxWidth: 14 }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

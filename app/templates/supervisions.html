@@ -1,0 +1,461 @@
+{% extends "base.html" %}
+
+{% block title %}Supervisi Awal — DAMPAK{% endblock %}
+
+{% block content %}
+<!-- Header Modul Supervisi -->
+<div class="dashboard-header" style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #e0e7ff; color: #4338ca; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; margin-bottom: 0.5rem; font-weight: 600;">
+      <span>●</span> Tahun Ajaran Aktif: {{ active_period.tahun_ajaran if active_period else 'Belum Diatur' }}
+    </div>
+    <h1 style="font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.35rem; color: #0f172a;">
+      Modul Supervisi Guru — Rekap Hasil Observasi
+    </h1>
+    <p style="color: var(--text-muted); margin-bottom: 0; max-width: 650px;">
+      Data supervisi pembelajaran berdasarkan instrumen <em>Rekap NIlai Observasi Genap</em> skala 1–4 dan konversi nilai akhir skala 0–100.
+    </p>
+  </div>
+  <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+    <button type="button" class="btn btn-primary" onclick="openModal('modalUploadExcel')">
+      📁 Upload Rekap Nilai Observasi
+    </button>
+  </div>
+</div>
+
+<!-- Stats Ringkas Hasil Observasi (Dashed Cards) -->
+<div class="stats-grid">
+  <div class="stat-box-modern card-dashed-indigo">
+    <div>
+      <span class="stat-label">Total Guru Disupervisi</span>
+      <div class="stat-value" style="font-size: 1.6rem; color: #4f46e5; margin-top: 0.25rem;">
+        {{ supervisions_count }} <span style="font-size: 0.85rem; color: var(--text-muted);">Guru</span>
+      </div>
+    </div>
+    <div class="stat-icon icon-indigo">👥</div>
+  </div>
+
+  <div class="stat-box-modern card-dashed-emerald">
+    <div>
+      <span class="stat-label">Rata-Rata Nilai</span>
+      <div class="stat-value" style="font-size: 1.6rem; color: #059669; margin-top: 0.25rem;">
+        {{ '%.1f'|format(avg_hasil) if avg_hasil else '0.0' }} <span style="font-size: 0.85rem; color: var(--text-muted);">/ 100</span>
+      </div>
+    </div>
+    <div class="stat-icon icon-emerald">⭐</div>
+  </div>
+
+  <div class="stat-box-modern card-dashed-blue">
+    <div>
+      <span class="stat-label">Konversi Skala 1 - 4</span>
+      <div class="stat-value" style="font-size: 1.6rem; color: #2563eb; margin-top: 0.25rem;">
+        {{ '%.2f'|format(avg_skala_4) if avg_skala_4 else '0.00' }} <span style="font-size: 0.85rem; color: var(--text-muted);">/ 4.00</span>
+      </div>
+    </div>
+    <div class="stat-icon icon-blue">📊</div>
+  </div>
+
+  <div class="stat-box-modern card-dashed-rose">
+    <div>
+      <span class="stat-label">Jumlah Indikator</span>
+      <div class="stat-value" style="font-size: 1.6rem; color: #e11d48; margin-top: 0.25rem;">
+        {{ indikators|length if indikators else 40 }} <span style="font-size: 0.85rem; color: var(--text-muted);">Butir</span>
+      </div>
+    </div>
+    <div class="stat-icon icon-rose">📋</div>
+  </div>
+</div>
+
+<!-- Tabs Pilihan Tampilan: Daftar Guru vs Matriks Lengkap -->
+<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+  <div style="display: flex; gap: 0.5rem;">
+    <button type="button" id="tabBtnList" class="btn btn-outline active" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; font-weight: 700; border-bottom: none; background: #ffffff;" onclick="switchView('list')">
+      👥 Daftar Nilai Guru (Ringkasan)
+    </button>
+    <button type="button" id="tabBtnMatrix" class="btn btn-outline" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; font-weight: 700; border-bottom: none;" onclick="switchView('matrix')">
+      📑 Matriks Lengkap Seluruh Aspek Observasi
+    </button>
+  </div>
+
+  {% if rekap %}
+  <div style="font-size: 0.85rem; color: var(--text-muted); padding-bottom: 0.5rem;">
+    <span>Sumber: <strong>{{ rekap.source_filename or rekap.sheet_name }}</strong></span>
+  </div>
+  {% endif %}
+</div>
+
+<!-- VIEW 1: TABEL DAFTAR GURU -->
+<div id="viewList" class="card card-dashed-indigo">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+    <div>
+      <h2 class="card-title" style="margin-bottom: 0.25rem;">Hasil Penilaian Observasi Guru</h2>
+      <p class="card-subtitle" style="margin-bottom: 0;">Rincian total skor perolehan (maks. 160), nilai akhir (skala 0–100), dan konversi (skala 1–4).</p>
+    </div>
+    <button type="button" class="btn btn-outline" style="font-size: 0.85rem;" onclick="openModal('modalUploadExcel')">
+      + Unggah File Baru / Update
+    </button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width: 60px;">No</th>
+          <th style="width: 130px;">NIGK</th>
+          <th>Nama Guru</th>
+          <th style="text-align: center; width: 140px;">Total Skor</th>
+          <th style="text-align: center; width: 170px;">Nilai (Skala 0-100)</th>
+          <th style="text-align: center; width: 150px;">Konversi (1-4)</th>
+          <th style="text-align: center; width: 140px;">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sup in supervisions %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>
+            <span style="font-family: monospace; font-weight: 700; font-size: 0.85rem; color: #1e293b; background: #f1f5f9; padding: 0.2rem 0.5rem; border-radius: 4px;">
+              {{ sup.nigk or '-' }}
+            </span>
+          </td>
+          <td>
+            <strong>{{ sup.nama_guru }}</strong>
+            <div style="font-size: 0.775rem; color: var(--text-muted);">{{ sup.nama_sekolah }}</div>
+          </td>
+          <td style="text-align: center;">
+            <strong style="color: #334155; font-size: 1rem;">{{ sup.total_skor|int if sup.total_skor == sup.total_skor|int else sup.total_skor }}</strong>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">/ {{ sup.skor_maksimal|int }}</span>
+          </td>
+          <td style="text-align: center;">
+            <div style="display: inline-flex; align-items: center; gap: 0.4rem;">
+              <strong style="font-size: 1.05rem; color: #0f172a;">{{ '%.1f'|format(sup.nilai_akhir) }}</strong>
+              {% if sup.predikat == 'Sangat Baik' %}
+                <span class="role-tag role-GURU" style="font-size: 0.7rem;">Sangat Baik</span>
+              {% elif sup.predikat == 'Baik' %}
+                <span class="role-tag role-SUPERVISOR" style="font-size: 0.7rem;">Baik</span>
+              {% elif sup.predikat == 'Cukup' %}
+                <span class="role-tag" style="background-color: #fef3c7; color: #92400e; font-size: 0.7rem;">Cukup</span>
+              {% else %}
+                <span class="role-tag" style="background-color: #fee2e2; color: #991b1b; font-size: 0.7rem;">Kurang</span>
+              {% endif %}
+            </div>
+          </td>
+          <td style="text-align: center;">
+            <strong style="color: #4f46e5; font-size: 1rem;">{{ '%.2f'|format(sup.konversi_skala_4) }}</strong>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">/ 4.00</span>
+          </td>
+          <td style="text-align: center;">
+            <div style="display: inline-flex; gap: 0.35rem; align-items: center; justify-content: center;">
+              <a href="{{ url_for('main.supervision_detail', supervision_id=sup.id) }}" 
+                 class="btn btn-primary btn-icon" 
+                 title="Lihat Rincian Skor Guru"
+                 aria-label="Lihat Detil">
+                👁️
+              </a>
+              <button type="button" 
+                      class="btn btn-outline btn-icon" 
+                      style="color: #4f46e5; border-color: #c7d2fe; background-color: #eef2ff;"
+                      onclick="openEditNigkModal({{ sup.id }}, '{{ sup.nama_guru|e }}', '{{ sup.nigk or '' }}')"
+                      title="Perbaiki NIGK Guru"
+                      aria-label="Perbaiki NIGK">
+                🪪
+              </button>
+              <button type="button" 
+                      class="btn btn-outline btn-icon" 
+                      style="color: #dc2626; border-color: #fecaca; background-color: #fff1f2;"
+                      onclick="openDeleteModal({{ sup.id }}, '{{ sup.nama_guru|e }}')"
+                      title="Hapus Data Guru Ini"
+                      aria-label="Hapus Data">
+                🗑️
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem;">
+            <div style="font-size: 2.25rem; margin-bottom: 0.5rem;">📊</div>
+            <div style="font-weight: 600; font-size: 1.05rem; color: var(--text-main);">Belum ada data Rekap Nilai Observasi yang diunggah</div>
+            <p style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Klik tombol <strong>"Upload Rekap Nilai Observasi"</strong> di atas untuk mengunggah sheet <em>Rekap NIlai Observasi Genap</em>.
+            </p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- VIEW 2: MATRIKS LENGKAP REKAP OBSERVASI (SEMUA INDIKATOR X SEMUA GURU) -->
+<div id="viewMatrix" class="card card-dashed-violet" style="display: none;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+    <div>
+      <h2 class="card-title" style="margin-bottom: 0.25rem;">Matriks Lengkap Rekap Nilai Observasi Pembelajaran</h2>
+      <p class="card-subtitle" style="margin-bottom: 0;">Sesuai lembar spreadsheet: 40 butir indikator observasi pembelajaran x seluruh guru.</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+      <button type="button" class="btn btn-outline" style="font-size: 0.85rem;" onclick="window.print()">
+        🖨️ Cetak Matriks
+      </button>
+    </div>
+  </div>
+
+  <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
+    <table class="table table-bordered" style="font-size: 0.85rem;">
+      <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 10;">
+        <tr>
+          <th style="width: 50px; text-align: center;">No</th>
+          <th style="min-width: 320px;">Aspek yang diamati: Pelaksanaan Pembelajaran</th>
+          {% for sup in supervisions %}
+            <th style="text-align: center; min-width: 75px; white-space: nowrap;">
+              {{ sup.nama_guru }}
+            </th>
+          {% endfor %}
+          <th style="text-align: center; min-width: 90px; background: #f1f5f9;">Rata-Rata</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set ns = namespace(last_kat='', last_sub='') %}
+        {% for ind in indikators %}
+          {# Header Kategori Utama jika berubah #}
+          {% if ind.kategori_utama != ns.last_kat %}
+            {% set ns.last_kat = ind.kategori_utama %}
+            <tr style="background-color: #f1f5f9;">
+              <td colspan="{{ supervisions|length + 3 }}" style="font-weight: 800; color: #1e293b; padding: 0.6rem 0.75rem; text-transform: uppercase; letter-spacing: 0.03em;">
+                📌 {{ ind.kategori_utama }}
+              </td>
+            </tr>
+          {% endif %}
+
+          {# Header Sub Kategori jika berubah #}
+          {% if ind.sub_kategori != ns.last_sub %}
+            {% set ns.last_sub = ind.sub_kategori %}
+            <tr style="background-color: #f8fafc;">
+              <td colspan="{{ supervisions|length + 3 }}" style="font-weight: 700; color: #4338ca; padding: 0.4rem 0.75rem;">
+                🔹 {{ ind.sub_kategori }}
+              </td>
+            </tr>
+          {% endif %}
+
+          <tr>
+            <td style="text-align: center; font-weight: 600; color: var(--text-muted);">{{ ind.urutan }}</td>
+            <td style="line-height: 1.4;">{{ ind.aspek_indikator }}</td>
+            {% for sup in supervisions %}
+              {% set s_val = matrix_scores.get((ind.id, sup.id), 0.0) %}
+              <td style="text-align: center; font-weight: 700; color: {% if s_val >= 4 %}#059669{% elif s_val >= 3 %}#2563eb{% elif s_val >= 2 %}#d97706{% else %}#dc2626{% endif %};">
+                {{ s_val|int if s_val == s_val|int else s_val }}
+              </td>
+            {% endfor %}
+            <td style="text-align: center; font-weight: 700; background: #f8fafc; color: #0f172a;">
+              {{ '%.2f'|format(ind.rata_rata_aspek) }}
+            </td>
+          </tr>
+        {% endfor %}
+
+        {# BARIS TOTAL SKOR #}
+        <tr style="background: #eef2ff; font-weight: 800; border-top: 2px solid #6366f1;">
+          <td colspan="2" style="text-align: right; padding: 0.75rem;">TOTAL SKOR:</td>
+          {% for sup in supervisions %}
+            <td style="text-align: center; color: #4338ca; font-size: 0.95rem;">
+              {{ sup.total_skor|int if sup.total_skor == sup.total_skor|int else sup.total_skor }}
+            </td>
+          {% endfor %}
+          <td style="text-align: center; color: #4338ca;">-</td>
+        </tr>
+
+        {# BARIS NILAI (SKALA 0 - 100) #}
+        <tr style="background: #ecfdf5; font-weight: 800;">
+          <td colspan="2" style="text-align: right; padding: 0.75rem;">NILAI (SKALA 0 - 100):</td>
+          {% for sup in supervisions %}
+            <td style="text-align: center; color: #059669; font-size: 0.95rem;">
+              {{ '%.1f'|format(sup.nilai_akhir) }}
+            </td>
+          {% endfor %}
+          <td style="text-align: center; color: #059669; font-size: 0.95rem;">
+            {{ '%.1f'|format(avg_hasil) }}
+          </td>
+        </tr>
+
+        {# BARIS KONVERSI SKALA 1 - 4 #}
+        <tr style="background: #eff6ff; font-weight: 800;">
+          <td colspan="2" style="text-align: right; padding: 0.75rem;">KONVERSI SKALA 1 - 4:</td>
+          {% for sup in supervisions %}
+            <td style="text-align: center; color: #2563eb; font-size: 0.95rem;">
+              {{ '%.2f'|format(sup.konversi_skala_4) }}
+            </td>
+          {% endfor %}
+          <td style="text-align: center; color: #2563eb; font-size: 0.95rem;">
+            {{ '%.2f'|format(avg_skala_4) }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Upload File Excel Rekap -->
+<div id="modalUploadExcel" class="modal-overlay">
+  <div class="modal-content" style="max-width: 560px;">
+    <div class="modal-header">
+      <h3 style="font-size: 1.2rem; font-weight: 700;">Upload File Rekap Nilai Observasi</h3>
+      <button type="button" class="modal-close" onclick="closeModal('modalUploadExcel')">&times;</button>
+    </div>
+    <form action="{{ url_for('main.upload_supervision_excel') }}" method="POST" enctype="multipart/form-data">
+      <div style="background-color: #f8fafc; border: 2px dashed #6366f1; border-radius: var(--radius-md); padding: 1.75rem; text-align: center; margin-bottom: 1.25rem;">
+        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📁</div>
+        <label for="excel_file" class="form-label" style="font-weight: 700; cursor: pointer; color: var(--primary); font-size: 1.05rem;">
+          Pilih File Excel (.xlsx / .xls)
+        </label>
+        <input type="file" id="excel_file" name="excel_file" accept=".xlsx, .xls" class="form-control" style="margin-top: 0.5rem;" required>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem; line-height: 1.4;">
+          Sistem akan secara otomatis mendeteksi sheet <strong>Rekap NIlai Observasi Genap</strong>, membaca 40 indikator observasi, skor setiap guru, serta mengkalkulasi nilai akhir skala 0–100 dan konversi 1–4.
+        </p>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modalUploadExcel')">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan & Proses Data</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Perbaiki NIGK Guru -->
+<div id="modalEditNigk" class="modal-overlay">
+  <div class="modal-content" style="max-width: 480px;">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 1.3rem;">🪪</span>
+        <h3 style="font-size: 1.2rem; font-weight: 700; margin: 0;">Perbaiki NIGK Guru</h3>
+      </div>
+      <button type="button" class="modal-close" onclick="closeModal('modalEditNigk')">&times;</button>
+    </div>
+    
+    <form id="formEditNigk" action="" method="POST">
+      <div style="padding: 0.5rem 0 1rem 0;">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.4;">
+          NIGK digunakan sebagai kode identitas unik untuk mencocokkan data observasi guru di Supervisi Awal, DAMPAK, dan Supervisi Autentik.
+        </p>
+
+        <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.875rem 1rem; margin-bottom: 1.25rem;">
+          <div style="font-size: 0.775rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 0.25rem;">Nama Guru Terpilih:</div>
+          <div style="font-weight: 700; color: #0f172a; font-size: 1.05rem;" id="editNigkGuruDisplay">-</div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0.5rem;">
+          <label for="input_nigk" class="form-label" style="font-weight: 700;">NIGK / NIK Baru:</label>
+          <input type="text" id="input_nigk" name="nigk" class="form-control" required placeholder="Masukkan NIGK guru...">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modalEditNigk')">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan & Cocokkan Data</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Konfirmasi Hapus Data Guru -->
+<div id="modalDeleteSupervisi" class="modal-overlay">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 1.3rem; color: #dc2626;">⚠️</span>
+        <h3 style="font-size: 1.2rem; font-weight: 700; color: #dc2626; margin: 0;">Konfirmasi Hapus Data Guru</h3>
+      </div>
+      <button type="button" class="modal-close" onclick="closeModal('modalDeleteSupervisi')">&times;</button>
+    </div>
+
+    <div style="padding: 0.5rem 0 1.25rem 0;">
+      <p style="color: #334155; font-size: 0.95rem; line-height: 1.5; margin-bottom: 0.75rem;">
+        Apakah Anda yakin ingin menghapus data hasil observasi untuk guru ini?
+      </p>
+      <div style="background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: var(--radius-md); padding: 0.875rem 1rem; margin-bottom: 1rem;">
+        <div style="font-weight: 700; color: #9f1239; font-size: 1.05rem;" id="deleteGuruDisplay">-</div>
+      </div>
+      <p style="font-size: 0.825rem; color: #dc2626; margin: 0;">
+        <em>Tindakan ini permanen. Seluruh rincian nilai 40 indikator untuk guru ini akan terhapus.</em>
+      </p>
+    </div>
+
+    <form id="formDelete" action="" method="POST">
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modalDeleteSupervisi')">Batal</button>
+        <button type="submit" class="btn" style="background-color: #dc2626; color: white; border: none; font-weight: 600; padding: 0.5rem 1.1rem; border-radius: var(--radius-md);">
+          🗑️ Ya, Hapus Data
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('active');
+  }
+
+  function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove('active');
+  }
+
+  function switchView(viewName) {
+    const viewList = document.getElementById('viewList');
+    const viewMatrix = document.getElementById('viewMatrix');
+    const tabBtnList = document.getElementById('tabBtnList');
+    const tabBtnMatrix = document.getElementById('tabBtnMatrix');
+
+    if (viewName === 'matrix') {
+      viewList.style.display = 'none';
+      viewMatrix.style.display = 'block';
+      tabBtnList.classList.remove('active');
+      tabBtnList.style.background = 'transparent';
+      tabBtnMatrix.classList.add('active');
+      tabBtnMatrix.style.background = '#ffffff';
+    } else {
+      viewList.style.display = 'block';
+      viewMatrix.style.display = 'none';
+      tabBtnMatrix.classList.remove('active');
+      tabBtnMatrix.style.background = 'transparent';
+      tabBtnList.classList.add('active');
+      tabBtnList.style.background = '#ffffff';
+    }
+  }
+
+  function openEditNigkModal(supervisionId, guruName, currentNigk) {
+    const form = document.getElementById('formEditNigk');
+    if (form) {
+      form.action = '/supervisi/' + supervisionId + '/edit-nigk';
+    }
+    const nameEl = document.getElementById('editNigkGuruDisplay');
+    if (nameEl) nameEl.textContent = guruName;
+
+    const nigkInput = document.getElementById('input_nigk');
+    if (nigkInput) nigkInput.value = currentNigk || '';
+
+    openModal('modalEditNigk');
+  }
+
+  function openDeleteModal(supervisionId, guruName) {
+    const form = document.getElementById('formDelete');
+    if (form) {
+      form.action = '/supervisions/' + supervisionId + '/delete';
+    }
+    const nameEl = document.getElementById('deleteGuruDisplay');
+    if (nameEl) nameEl.textContent = guruName;
+
+    openModal('modalDeleteSupervisi');
+  }
+
+  window.addEventListener('click', function(event) {
+    if (event.target.classList.contains('modal-overlay')) {
+      event.target.classList.remove('active');
+    }
+  });
+</script>
+{% endblock %}

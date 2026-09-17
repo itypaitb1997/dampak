@@ -1,0 +1,933 @@
+{% extends "base.html" %}
+
+{% block title %}Rincian Nilai Observasi — {{ sup.nama_guru }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  @media print {
+    .navbar, footer, .no-print, .btn, #overlayAnalyzing {
+      display: none !important;
+    }
+    .container {
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .card {
+      box-shadow: none !important;
+      border: 1px solid #ccc !important;
+      page-break-inside: avoid;
+      margin-bottom: 1.5rem !important;
+    }
+    body {
+      background: #ffffff !important;
+      color: #000000 !important;
+      font-size: 10pt;
+    }
+  }
+
+  .score-badge-1 { background-color: #fee2e2; color: #991b1b; }
+  .score-badge-2 { background-color: #fef3c7; color: #92400e; }
+  .score-badge-3 { background-color: #eff6ff; color: #1d4ed8; }
+  .score-badge-4 { background-color: #ecfdf5; color: #065f46; }
+
+  /* Overlay Animasi Analisis AI */
+  .ai-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+  }
+  .ai-overlay.active {
+    display: flex;
+  }
+
+  @keyframes pulseGlow {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.6); }
+    70% { transform: scale(1.05); box-shadow: 0 0 0 25px rgba(147, 51, 234, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(147, 51, 234, 0); }
+  }
+
+  @keyframes spinSlow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .ai-orb {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.25rem;
+    color: #ffffff;
+    margin: 0 auto 1.5rem auto;
+    animation: pulseGlow 2s infinite;
+  }
+
+  .progress-bar-container {
+    background-color: #e2e8f0;
+    border-radius: 9999px;
+    height: 10px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.8s ease-in-out;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Navigasi Balik & Tombol Aksi -->
+<div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+  {% if active_page == 'rtl_dampak' %}
+  <a href="{{ url_for('main.rtl_dampak') }}" class="btn btn-outline" style="font-size: 0.875rem;">
+    ← Kembali ke Supervisi DAMPAK
+  </a>
+  {% elif active_page == 'supervisi_autentik' %}
+  <a href="{{ url_for('main.supervisi_autentik') }}" class="btn btn-outline" style="font-size: 0.875rem;">
+    ← Kembali ke Supervisi Autentik
+  </a>
+  {% else %}
+  <a href="{{ url_for('main.supervisions') }}" class="btn btn-outline" style="font-size: 0.875rem;">
+    ← Kembali ke Supervisi Awal
+  </a>
+  {% endif %}
+  <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+    <button type="button" 
+            class="btn btn-primary" 
+            id="btnTriggerAI"
+            onclick="startAIAnalysis({{ sup.id }})" 
+            style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; font-weight: 700; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35); display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.55rem 1.15rem;">
+      <span style="font-size: 1.1rem;">✨</span> 
+      <span>{% if sup.ai_analysis %}Analisis Ulang (Gemini AI){% else %}Analisa Pembelajaran (Gemini AI){% endif %}</span>
+    </button>
+    <button type="button" class="btn btn-outline" onclick="window.print()">
+      🖨️ Cetak Lembar Penilaian Guru
+    </button>
+  </div>
+</div>
+
+<!-- Header Kartu Profil & Skor Capaian Guru -->
+<div class="card card-dashed-indigo" style="margin-bottom: 2rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+    <div style="flex: 1; min-width: 280px;">
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #e0e7ff; color: #4338ca; padding: 0.2rem 0.65rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem;">
+        KODE: {{ sup.kode_supervisi }} &bull; TAHAP: {{ sup.tahap }}
+      </div>
+      <h1 style="font-size: 1.75rem; font-weight: 800; color: #0f172a; margin-bottom: 0.25rem;">
+        {{ sup.nama_guru }}
+      </h1>
+      <div style="font-size: 0.95rem; color: #475569; margin-bottom: 0.5rem;">
+        NIGK: <strong>{{ sup.nigk or '-' }}</strong> &bull; Instansi: <strong>{{ sup.nama_sekolah }}</strong>
+      </div>
+      <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.875rem; color: var(--text-muted);">
+        <span>📅 Tahun Ajaran: <strong style="color: var(--text-main);">{{ sup.period.tahun_ajaran if sup.period else '-' }}</strong></span>
+        <span>📋 Instrumen: <strong style="color: var(--text-main);">Observasi Pembelajaran (40 Butir)</strong></span>
+      </div>
+    </div>
+
+    <!-- Skor Capaian Ringkas -->
+    <div style="display: flex; align-items: center; gap: 1.5rem; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: var(--radius-md); padding: 1.25rem 1.75rem;">
+      <div style="text-align: center;">
+        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.25rem;">Total Skor</div>
+        <div style="font-size: 1.6rem; font-weight: 800; color: #334155;">
+          {{ sup.total_skor|int if sup.total_skor == sup.total_skor|int else sup.total_skor }}
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">Maks: {{ sup.skor_maksimal|int }}</div>
+      </div>
+
+      <div style="width: 1px; height: 50px; background: #cbd5e1;"></div>
+
+      <div style="text-align: center;">
+        <div style="font-size: 0.75rem; text-transform: uppercase; color: #059669; font-weight: 700; margin-bottom: 0.25rem;">Nilai Akhir</div>
+        <div style="font-size: 2rem; font-weight: 800; color: #059669; line-height: 1;">
+          {{ '%.1f'|format(sup.nilai_akhir) }}
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Skala 0 - 100</div>
+      </div>
+
+      <div style="width: 1px; height: 50px; background: #cbd5e1;"></div>
+
+      <div style="text-align: center;">
+        <div style="font-size: 0.75rem; text-transform: uppercase; color: #2563eb; font-weight: 700; margin-bottom: 0.25rem;">Konversi 1 - 4</div>
+        <div style="font-size: 1.6rem; font-weight: 800; color: #2563eb;">
+          {{ '%.2f'|format(sup.konversi_skala_4) }}
+        </div>
+        <div style="margin-top: 0.15rem;">
+          {% if sup.predikat == 'Sangat Baik' %}
+            <span class="role-tag role-GURU" style="font-size: 0.7rem;">Sangat Baik</span>
+          {% elif sup.predikat == 'Baik' %}
+            <span class="role-tag role-SUPERVISOR" style="font-size: 0.7rem;">Baik</span>
+          {% elif sup.predikat == 'Cukup' %}
+            <span class="role-tag" style="background-color: #fef3c7; color: #92400e; font-size: 0.7rem;">Cukup</span>
+          {% else %}
+            <span class="role-tag" style="background-color: #fee2e2; color: #991b1b; font-size: 0.7rem;">Kurang</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================= -->
+<!-- SECTION: REKAM JEJAK 3 TAHAPAN (AWAL ➔ DAMPAK ➔ AUTENTIK)         -->
+<!-- ================================================================= -->
+{% if sup.tahap == 'AUTENTIK' and comp_3stage %}
+<div class="card card-dashed-indigo" style="margin-bottom: 2rem; border-color: #8b5cf6; background: #ffffff;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.85rem;">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #ede9fe; color: #6d28d9; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.35rem;">
+        🎯 REKAPITULASI 3 SIKLUS: SUPERVISI AWAL ➔ DAMPAK ➔ SUPERVISI AUTENTIK
+      </div>
+      <h2 style="font-size: 1.3rem; font-weight: 800; color: #0f172a; margin-bottom: 0.2rem;">
+        Perbandingan Capaian 3 Tahap Supervisi & Tindak Lanjut
+      </h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0;">
+        Menyandingkan rekam jejak guru dari <strong>Supervisi Awal</strong>, <strong>Supervisi DAMPAK</strong>, hingga <strong>Supervisi Autentik</strong> berdasar kerangka <em>teori.md</em>.
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      {% if comp_3stage.s_awal %}
+      <a href="{{ url_for('main.supervision_detail', supervision_id=comp_3stage.s_awal.id) }}" class="btn btn-outline" style="font-size: 0.8rem; color: #4338ca; border-color: #c7d2fe; background: #f5f3ff;" target="_blank">
+        1. Supervisi Awal (#{{ comp_3stage.s_awal.id }}) ↗
+      </a>
+      {% endif %}
+      {% if comp_3stage.s_dampak %}
+      <a href="{{ url_for('main.rtl_dampak_detail', supervision_id=comp_3stage.s_dampak.id) }}" class="btn btn-outline" style="font-size: 0.8rem; color: #15803d; border-color: #bbf7d0; background: #f0fdf4;" target="_blank">
+        2. Supervisi DAMPAK (#{{ comp_3stage.s_dampak.id }}) ↗
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 3 Kartu Stepper Tahapan Supervisi -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
+    <!-- Tahap 1: Supervisi Awal -->
+    <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: var(--radius-md); padding: 1.25rem; position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <span style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">1. Supervisi Awal</span>
+        <span class="role-tag" style="background: #e2e8f0; color: #334155; font-size: 0.7rem;">{{ comp_3stage.s_awal.period.tahun_ajaran if comp_3stage.s_awal and comp_3stage.s_awal.period else '-' }}</span>
+      </div>
+      <div style="font-size: 1.8rem; font-weight: 800; color: #334155; margin-bottom: 0.25rem;">
+        {{ '%.1f'|format(comp_3stage.n_awal) if comp_3stage.n_awal is not none else '-' }}
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">/100</span>
+      </div>
+      <div style="font-size: 0.775rem; color: #475569; display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.5rem; border-top: 1px dashed #cbd5e1; padding-top: 0.5rem;">
+        <span>💡 Memahami: <strong>{{ comp_3stage.m_awal.memahami.persentase if comp_3stage.m_awal else 0 }}%</strong></span>
+        <span>🚀 Mengaplikasikan: <strong>{{ comp_3stage.m_awal.mengaplikasikan.persentase if comp_3stage.m_awal else 0 }}%</strong></span>
+        <span>🔄 Refleksi: <strong>{{ comp_3stage.m_awal.refleksi.persentase if comp_3stage.m_awal else 0 }}%</strong></span>
+      </div>
+    </div>
+
+    <!-- Tahap 2: Supervisi DAMPAK -->
+    <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: var(--radius-md); padding: 1.25rem; position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <span style="font-size: 0.75rem; font-weight: 800; color: #166534; text-transform: uppercase;">2. Supervisi DAMPAK</span>
+        <span class="role-tag score-badge-4" style="font-size: 0.7rem;">{{ comp_3stage.s_dampak.period.tahun_ajaran if comp_3stage.s_dampak and comp_3stage.s_dampak.period else '-' }}</span>
+      </div>
+      <div style="font-size: 1.8rem; font-weight: 800; color: #15803d; margin-bottom: 0.25rem;">
+        {{ '%.1f'|format(comp_3stage.n_dampak) if comp_3stage.n_dampak is not none else '-' }}
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">/100</span>
+        {% if comp_3stage.delta_awal_dampak is not none %}
+        <span class="role-tag" style="font-size: 0.75rem; font-weight: 800; vertical-align: middle; margin-left: 0.25rem; background: #dcfce7; color: #166534;">
+          {% if comp_3stage.delta_awal_dampak >= 0 %}+{% endif %}{{ comp_3stage.delta_awal_dampak }}
+        </span>
+        {% endif %}
+      </div>
+      <div style="font-size: 0.775rem; color: #166534; display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.5rem; border-top: 1px dashed #86efac; padding-top: 0.5rem;">
+        <span>💡 Memahami: <strong>{{ comp_3stage.m_dampak.memahami.persentase if comp_3stage.m_dampak else 0 }}%</strong></span>
+        <span>🚀 Mengaplikasikan: <strong>{{ comp_3stage.m_dampak.mengaplikasikan.persentase if comp_3stage.m_dampak else 0 }}%</strong></span>
+        <span>🔄 Refleksi: <strong>{{ comp_3stage.m_dampak.refleksi.persentase if comp_3stage.m_dampak else 0 }}%</strong></span>
+      </div>
+    </div>
+
+    <!-- Tahap 3: Supervisi Autentik -->
+    <div style="background: #faf5ff; border: 2px solid #a855f7; border-radius: var(--radius-md); padding: 1.25rem; position: relative; box-shadow: 0 4px 12px rgba(168, 85, 247, 0.1);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <span style="font-size: 0.75rem; font-weight: 800; color: #6b21a8; text-transform: uppercase;">3. Supervisi Autentik (Saat Ini)</span>
+        <span class="role-tag" style="background: #f3e8ff; color: #6b21a8; font-size: 0.7rem; font-weight: 800;">AKTIF</span>
+      </div>
+      <div style="font-size: 1.8rem; font-weight: 800; color: #7e22ce; margin-bottom: 0.25rem;">
+        {{ '%.1f'|format(comp_3stage.n_autentik) if comp_3stage.n_autentik is not none else '-' }}
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">/100</span>
+        {% if comp_3stage.delta_total is not none %}
+        <span class="role-tag" style="font-size: 0.75rem; font-weight: 800; vertical-align: middle; margin-left: 0.25rem; background: #f3e8ff; color: #7e22ce;">
+          Total: {% if comp_3stage.delta_total >= 0 %}+{% endif %}{{ comp_3stage.delta_total }}
+        </span>
+        {% endif %}
+      </div>
+      <div style="font-size: 0.775rem; color: #6b21a8; display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.5rem; border-top: 1px dashed #d8b4fe; padding-top: 0.5rem;">
+        <span>💡 Memahami: <strong>{{ metrics.memahami.persentase if metrics else 0 }}%</strong></span>
+        <span>🚀 Mengaplikasikan: <strong>{{ metrics.mengaplikasikan.persentase if metrics else 0 }}%</strong></span>
+        <span>🔄 Refleksi: <strong>{{ metrics.refleksi.persentase if metrics else 0 }}%</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rekomendasi Utama Berdasarkan Tren Kinerja 3 Tahap -->
+  <div style="background: {% if comp_3stage.is_konsisten_bagus %}linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%){% else %}#f8fafc{% endif %}; border: 1.5px solid {% if comp_3stage.is_konsisten_bagus %}#34d399{% else %}#cbd5e1{% endif %}; border-radius: var(--radius-md); padding: 1.25rem 1.5rem;">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.5rem;">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 1.3rem;">{% if comp_3stage.is_konsisten_bagus %}🌟{% else %}📌{% endif %}</span>
+        <strong style="font-size: 1.05rem; color: {% if comp_3stage.is_konsisten_bagus %}#065f46{% else %}#1e293b{% endif %};">
+          Rekomendasi Tindak Lanjut: {{ comp_3stage.prioritas_rekomendasi }}
+        </strong>
+      </div>
+      <span class="role-tag" style="font-size: 0.775rem; font-weight: 800; background: {% if comp_3stage.is_konsisten_bagus %}#059669; color: #ffffff{% else %}#e2e8f0; color: #334155{% endif %};">
+        {{ comp_3stage.tren_label }}
+      </span>
+    </div>
+    <p style="font-size: 0.875rem; line-height: 1.55; color: {% if comp_3stage.is_konsisten_bagus %}#047857{% else %}#475569{% endif %}; margin-bottom: 0.75rem;">
+      {{ comp_3stage.alasan_rekomendasi }}
+    </p>
+
+    <!-- 6 Opsi Dukungan Resmi (teori.md) -->
+    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; font-size: 0.775rem;">
+      <span style="font-weight: 700; color: #475569; margin-right: 0.25rem;">Pilihan Bentuk Dukungan (teori.md):</span>
+      {% for opsi in comp_3stage.opsi_dukungan %}
+      <span style="padding: 0.2rem 0.65rem; border-radius: 9999px; font-weight: 700; {% if opsi == comp_3stage.prioritas_rekomendasi %}background: #059669; color: #ffffff; box-shadow: 0 2px 6px rgba(5,150,105,0.3);{% else %}background: #ffffff; color: #475569; border: 1px solid #cbd5e1;{% endif %}">
+        {% if opsi == 'Berbagi Praktik Baik' %}🌟{% elif opsi == 'Coaching' %}💡{% elif opsi == 'Lesson Study' %}📚{% elif opsi == 'Kolaborasi' %}🤝{% elif opsi == 'Supervisi Autentik' %}🔍{% else %}🏫{% endif %}
+        {{ opsi }}
+      </span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% elif comparison and prev_supervision %}
+<div class="card card-dashed-indigo" style="margin-bottom: 2rem; border-color: #3b82f6; background: #ffffff;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.85rem;">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #dbeafe; color: #1d4ed8; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.35rem;">
+        🔄 KOMPARASI SIKLUS: {{ 'SUPERVISI AWAL' if prev_supervision.tahap == 'AWAL' else 'SUPERVISI SEBELUMNYA' }} ➔ {{ 'SUPERVISI DAMPAK' if sup.tahap == 'DAMPAK' else sup.tahap }}
+      </div>
+      <h2 style="font-size: 1.3rem; font-weight: 800; color: #0f172a; margin-bottom: 0.2rem;">
+        Perbandingan Capaian Guru dengan Supervisi Awal
+      </h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0;">
+        Penyandingan data observasi dari <strong>Supervisi Awal ({{ comparison.prev_tahun_ajaran }})</strong> menuju <strong>{{ 'Supervisi DAMPAK' if sup.tahap == 'DAMPAK' else sup.tahap }} ({{ sup.period.tahun_ajaran if sup.period else '-' }})</strong> berdasar kerangka <em>teori.md</em>.
+      </p>
+    </div>
+    <div>
+      <a href="{{ url_for('main.supervision_detail', supervision_id=comparison.prev_supervision_id) }}" class="btn btn-outline" style="font-size: 0.825rem; font-weight: 600; color: #1d4ed8; border-color: #bfdbfe; background: #eff6ff;" target="_blank">
+        👁️ Buka Lembar Supervisi Awal (#{{ comparison.prev_supervision_id }}) ↗
+      </a>
+    </div>
+  </div>
+
+  <!-- 4 Kolom KPI Perbandingan -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    <!-- KPI 1: Nilai Akhir -->
+    <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: var(--radius-md); padding: 1rem 1.15rem;">
+      <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.35rem;">Nilai Akhir Observasi</div>
+      <div style="display: flex; align-items: baseline; gap: 0.5rem;">
+        <span style="font-size: 1.15rem; color: #94a3b8; text-decoration: line-through;">{{ '%.1f'|format(comparison.prev_nilai_akhir) }}</span>
+        <span style="font-size: 1.6rem; font-weight: 800; color: #059669;">{{ '%.1f'|format(sup.nilai_akhir) }}</span>
+      </div>
+      <div style="margin-top: 0.35rem; display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 0.75rem; color: var(--text-muted);">Delta Pertumbuhan:</span>
+        <span class="role-tag" style="font-size: 0.75rem; font-weight: 800; background: {% if comparison.delta_nilai_akhir > 0 %}#ecfdf5; color: #065f46;{% elif comparison.delta_nilai_akhir < 0 %}#fee2e2; color: #991b1b;{% else %}#eff6ff; color: #1e40af;{% endif %}">
+          {% if comparison.delta_nilai_akhir > 0 %}+{% endif %}{{ '%.1f'|format(comparison.delta_nilai_akhir) }}
+        </span>
+      </div>
+    </div>
+
+    <!-- KPI 2: Dimensi Memahami -->
+    <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: var(--radius-md); padding: 1rem 1.15rem;">
+      <div style="font-size: 0.75rem; font-weight: 700; color: #4338ca; text-transform: uppercase; margin-bottom: 0.35rem;">💡 Dimensi Memahami</div>
+      <div style="display: flex; align-items: baseline; gap: 0.5rem;">
+        <span style="font-size: 1.15rem; color: #94a3b8;">{{ comparison.prev_metrics.memahami.persentase }}%</span>
+        <span style="font-size: 1.15rem; color: #64748b;">➔</span>
+        <span style="font-size: 1.5rem; font-weight: 800; color: #3730a3;">{{ metrics.memahami.persentase }}%</span>
+      </div>
+      <div style="margin-top: 0.35rem; display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 0.75rem; color: var(--text-muted);">Perkembangan:</span>
+        <span class="role-tag" style="font-size: 0.75rem; font-weight: 800; background: {% if comparison.delta_memahami > 0 %}#ecfdf5; color: #065f46;{% elif comparison.delta_memahami < 0 %}#fee2e2; color: #991b1b;{% else %}#eff6ff; color: #1e40af;{% endif %}">
+          {% if comparison.delta_memahami > 0 %}+{% endif %}{{ comparison.delta_memahami }}%
+        </span>
+      </div>
+    </div>
+
+    <!-- KPI 3: Dimensi Mengaplikasikan -->
+    <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: var(--radius-md); padding: 1rem 1.15rem;">
+      <div style="font-size: 0.75rem; font-weight: 700; color: #166534; text-transform: uppercase; margin-bottom: 0.35rem;">🚀 Dimensi Mengaplikasikan</div>
+      <div style="display: flex; align-items: baseline; gap: 0.5rem;">
+        <span style="font-size: 1.15rem; color: #94a3b8;">{{ comparison.prev_metrics.mengaplikasikan.persentase }}%</span>
+        <span style="font-size: 1.15rem; color: #64748b;">➔</span>
+        <span style="font-size: 1.5rem; font-weight: 800; color: #15803d;">{{ metrics.mengaplikasikan.persentase }}%</span>
+      </div>
+      <div style="margin-top: 0.35rem; display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 0.75rem; color: var(--text-muted);">Perkembangan:</span>
+        <span class="role-tag" style="font-size: 0.75rem; font-weight: 800; background: {% if comparison.delta_mengaplikasikan > 0 %}#ecfdf5; color: #065f46;{% elif comparison.delta_mengaplikasikan < 0 %}#fee2e2; color: #991b1b;{% else %}#eff6ff; color: #1e40af;{% endif %}">
+          {% if comparison.delta_mengaplikasikan > 0 %}+{% endif %}{{ comparison.delta_mengaplikasikan }}%
+        </span>
+      </div>
+    </div>
+
+    <!-- KPI 4: Dimensi Refleksi -->
+    <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: var(--radius-md); padding: 1rem 1.15rem;">
+      <div style="font-size: 0.75rem; font-weight: 700; color: #9a3412; text-transform: uppercase; margin-bottom: 0.35rem;">🔄 Dimensi Refleksi</div>
+      <div style="display: flex; align-items: baseline; gap: 0.5rem;">
+        <span style="font-size: 1.15rem; color: #94a3b8;">{{ comparison.prev_metrics.refleksi.persentase }}%</span>
+        <span style="font-size: 1.15rem; color: #64748b;">➔</span>
+        <span style="font-size: 1.5rem; font-weight: 800; color: #ea580c;">{{ metrics.refleksi.persentase }}%</span>
+      </div>
+      <div style="margin-top: 0.35rem; display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 0.75rem; color: var(--text-muted);">Perkembangan:</span>
+        <span class="role-tag" style="font-size: 0.75rem; font-weight: 800; background: {% if comparison.delta_refleksi > 0 %}#ecfdf5; color: #065f46;{% elif comparison.delta_refleksi < 0 %}#fee2e2; color: #991b1b;{% else %}#eff6ff; color: #1e40af;{% endif %}">
+          {% if comparison.delta_refleksi > 0 %}+{% endif %}{{ comparison.delta_refleksi }}%
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Indikator yang Mengalami Peningkatan & Pengawalan -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+    <!-- Indikator Naik -->
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 1rem 1.25rem;">
+      <div style="font-size: 0.9rem; font-weight: 800; color: #166534; margin-bottom: 0.6rem; display: flex; justify-content: space-between; align-items: center;">
+        <span>📈 Indikator Mengalami Lonjakan Positif</span>
+        <span class="role-tag score-badge-4" style="font-size: 0.75rem;">{{ comparison.indikator_naik|length }} butir naik</span>
+      </div>
+      {% if comparison.indikator_naik %}
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 220px; overflow-y: auto; padding-right: 0.25rem;">
+          {% for it in comparison.indikator_naik[:5] %}
+          <div style="background: #ffffff; border: 1px solid #dcfce7; border-radius: var(--radius-sm); padding: 0.5rem 0.65rem; font-size: 0.8rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 700; color: #15803d;">Butir {{ it.urutan }} &bull; {{ it.sub_kategori }}</span>
+              <span style="font-weight: 800; color: #15803d; background: #dcfce7; padding: 0.1rem 0.4rem; border-radius: 4px;">
+                {{ it.skor_lama|int }} ➔ {{ it.skor_baru|int }} (+{{ it.selisih|int }})
+              </span>
+            </div>
+            <div style="color: #475569; margin-top: 0.2rem; line-height: 1.3;">
+              {{ it.aspek }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p style="font-size: 0.825rem; color: #64748b; margin: 0;">Skor pada seluruh indikator relatif stabil dibandingkan supervisi awal.</p>
+      {% endif %}
+    </div>
+
+    <!-- Indikator Turun / Perlu Pengawalan -->
+    <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: var(--radius-md); padding: 1rem 1.25rem;">
+      <div style="font-size: 0.9rem; font-weight: 800; color: #9a3412; margin-bottom: 0.6rem; display: flex; justify-content: space-between; align-items: center;">
+        <span>🎯 Indikator Perlu Dikawal (Kawal Dampak)</span>
+        <span class="role-tag" style="background: #ffedd5; color: #9a3412; font-size: 0.75rem;">{{ comparison.indikator_turun|length }} butir perlu penguatan</span>
+      </div>
+      {% if comparison.indikator_turun %}
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 220px; overflow-y: auto; padding-right: 0.25rem;">
+          {% for it in comparison.indikator_turun[:5] %}
+          <div style="background: #ffffff; border: 1px solid #ffedd5; border-radius: var(--radius-sm); padding: 0.5rem 0.65rem; font-size: 0.8rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 700; color: #c2410c;">Butir {{ it.urutan }} &bull; {{ it.sub_kategori }}</span>
+              <span style="font-weight: 800; color: #c2410c; background: #ffedd5; padding: 0.1rem 0.4rem; border-radius: 4px;">
+                {{ it.skor_lama|int }} ➔ {{ it.skor_baru|int }} ({{ it.selisih|int }})
+              </span>
+            </div>
+            <div style="color: #475569; margin-top: 0.2rem; line-height: 1.3;">
+              {{ it.aspek }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p style="font-size: 0.825rem; color: #64748b; margin: 0;">Tidak ada penurunan skor indikator dari supervisi awal.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Catatan Kerangka Kerja DAMPAK -->
+  <div style="margin-top: 1.25rem; padding-top: 0.85rem; border-top: 1px dashed #e2e8f0; font-size: 0.825rem; color: #475569; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+    <div>
+      🌟 <strong>Prinsip Pembelajaran Mendalam:</strong> Berkesadaran, Bermakna, & Menggembirakan &bull; <strong>Siklus:</strong> D-A-M-P-A-K
+    </div>
+    <div style="font-weight: 700; color: #1d4ed8;">
+      Status Dinamika: <span style="background: #eff6ff; padding: 0.2rem 0.6rem; border-radius: 9999px;">{{ comparison.tren }}</span>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ================================================================= -->
+<!-- SECTION: ANALISIS SUPERVISI KEPALA SEKOLAH (PEMBELAJARAN MENDALAM) -->
+<!-- ================================================================= -->
+<div class="card card-dashed-indigo" style="margin-bottom: 2rem; border-color: #818cf8; background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid #e0e7ff; padding-bottom: 1rem;">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #ede9fe; color: #6d28d9; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.4rem;">
+        🧠 SUPERVISI KLINIS BERBASIS DATA (DEEP LEARNING)
+      </div>
+      <h2 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin-bottom: 0.25rem;">
+        Analisis Pembelajaran Mendalam — Perspektif Kepala Sekolah
+      </h2>
+      <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0;">
+        Hasil sintesis dimensi Memahami, Mengaplikasikan, Refleksi, telaah kekuatan-kelemahan guru, serta rekomendasi supervisi klinis.
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+      {% if sup.ai_analysis %}
+        <span style="display: inline-flex; align-items: center; gap: 0.4rem; background: #ecfdf5; color: #065f46; font-size: 0.8rem; font-weight: 700; padding: 0.35rem 0.85rem; border-radius: 9999px; border: 1px solid #a7f3d0;">
+          <span>✅</span> Teranalisis: {{ sup.ai_analysis.model_name }}
+        </span>
+        <button type="button" class="btn btn-outline" onclick="openModal('modalEditAIAnalysis')" style="font-size: 0.825rem; font-weight: 700; color: #4338ca; border-color: #c7d2fe; background: #ffffff;">
+          ✏️ Edit / Sesuaikan Hasil
+        </button>
+      {% else %}
+        <button type="button" class="btn btn-primary" onclick="startAIAnalysis({{ sup.id }})" style="font-size: 0.85rem; background: #4f46e5;">
+          ✨ Jalankan Analisis AI Sekarang
+        </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 3 Kartu Persentase Dimensi Pembelajaran Mendalam -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; margin-bottom: 1.75rem;">
+    <!-- Dimensi 1: Memahami -->
+    <div style="background: #ffffff; border: 1.5px dashed #c7d2fe; border-radius: var(--radius-md); padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <span style="font-weight: 700; font-size: 0.95rem; color: #3730a3;">💡 Dimensi Memahami</span>
+        <strong style="font-size: 1.4rem; color: #4338ca;">{{ metrics.memahami.persentase if metrics else '0.0' }}%</strong>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" style="width: {{ metrics.memahami.persentase if metrics else 0 }}%; background: linear-gradient(90deg, #6366f1, #4f46e5);"></div>
+      </div>
+      <div style="font-size: 0.775rem; color: var(--text-muted); margin-top: 0.5rem; display: flex; justify-content: space-between;">
+        <span>Skor: <strong>{{ metrics.memahami.total_perolehan|int if metrics else 0 }} / {{ metrics.memahami.total_maksimal|int if metrics else 0 }}</strong></span>
+        <span>{{ metrics.memahami.jumlah_butir if metrics else 0 }} butir aspek</span>
+      </div>
+      <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.35rem; line-height: 1.3;">
+        Mencakup penjelasan konsep mandiri, keterhubungan materi, dan rasa ingin tahu murid.
+      </div>
+    </div>
+
+    <!-- Dimensi 2: Mengaplikasikan -->
+    <div style="background: #ffffff; border: 1.5px dashed #bbf7d0; border-radius: var(--radius-md); padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <span style="font-weight: 700; font-size: 0.95rem; color: #166534;">🚀 Dimensi Mengaplikasikan</span>
+        <strong style="font-size: 1.4rem; color: #15803d;">{{ metrics.mengaplikasikan.persentase if metrics else '0.0' }}%</strong>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" style="width: {{ metrics.mengaplikasikan.persentase if metrics else 0 }}%; background: linear-gradient(90deg, #22c55e, #16a34a);"></div>
+      </div>
+      <div style="font-size: 0.775rem; color: var(--text-muted); margin-top: 0.5rem; display: flex; justify-content: space-between;">
+        <span>Skor: <strong>{{ metrics.mengaplikasikan.total_perolehan|int if metrics else 0 }} / {{ metrics.mengaplikasikan.total_maksimal|int if metrics else 0 }}</strong></span>
+        <span>{{ metrics.mengaplikasikan.jumlah_butir if metrics else 0 }} butir aspek</span>
+      </div>
+      <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.35rem; line-height: 1.3;">
+        Penerapan materi pada konteks nyata, pemecahan masalah, dan tugas kolaboratif murid.
+      </div>
+    </div>
+
+    <!-- Dimensi 3: Refleksi & Umpan Balik -->
+    <div style="background: #ffffff; border: 1.5px dashed #fed7aa; border-radius: var(--radius-md); padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <span style="font-weight: 700; font-size: 0.95rem; color: #9a3412;">🔄 Dimensi Refleksi</span>
+        <strong style="font-size: 1.4rem; color: #ea580c;">{{ metrics.refleksi.persentase if metrics else '0.0' }}%</strong>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" style="width: {{ metrics.refleksi.persentase if metrics else 0 }}%; background: linear-gradient(90deg, #f97316, #ea580c);"></div>
+      </div>
+      <div style="font-size: 0.775rem; color: var(--text-muted); margin-top: 0.5rem; display: flex; justify-content: space-between;">
+        <span>Skor: <strong>{{ metrics.refleksi.total_perolehan|int if metrics else 0 }} / {{ metrics.refleksi.total_maksimal|int if metrics else 0 }}</strong></span>
+        <span>{{ metrics.refleksi.jumlah_butir if metrics else 0 }} butir aspek</span>
+      </div>
+      <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.35rem; line-height: 1.3;">
+        Evaluasi tantangan belajar murid, penutupan berkesadaran, dan umpan balik spesifik.
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid 2 Kolom: Kekuatan & Kelemahan Guru -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; margin-bottom: 1.75rem;">
+    <!-- Kolom Kekuatan -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-md); padding: 1.25rem;">
+      <h3 style="font-size: 1rem; font-weight: 700; color: #047857; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>💪</span> Kekuatan Utama Guru (Skor Konsisten / Tinggi)
+      </h3>
+      <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+        {% if metrics and metrics.kekuatan %}
+          {% for k in metrics.kekuatan[:4] %}
+          <div style="background: #f0fdf4; border-left: 3px solid #10b981; padding: 0.5rem 0.75rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-size: 0.825rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+              <span style="font-weight: 600; color: #064e3b;">{{ k.sub_kategori }}</span>
+              <span class="role-tag score-badge-4" style="font-size: 0.7rem; white-space: nowrap;">Skor {{ k.skor|int }}</span>
+            </div>
+            <div style="color: #334155; margin-top: 0.2rem; line-height: 1.3;">
+              {{ k.aspek[:90] }}...
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Belum ada data skor yang dihitung.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Kolom Kelemahan / Area Pembenahan -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-md); padding: 1.25rem;">
+      <h3 style="font-size: 1rem; font-weight: 700; color: #b91c1c; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>🎯</span> Area Prioritas Pembenahan Guru (Perlu Pendampingan)
+      </h3>
+      <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+        {% if metrics and metrics.kelemahan %}
+          {% for kl in metrics.kelemahan[:4] %}
+          <div style="background: #fff1f2; border-left: 3px solid #f43f5e; padding: 0.5rem 0.75rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-size: 0.825rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+              <span style="font-weight: 600; color: #881337;">{{ kl.sub_kategori }}</span>
+              <span class="role-tag score-badge-2" style="font-size: 0.7rem; white-space: nowrap;">Skor {{ kl.skor|int }}</span>
+            </div>
+            <div style="color: #334155; margin-top: 0.2rem; line-height: 1.3;">
+              {{ kl.aspek[:90] }}...
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Belum ada data kelemahan tercatat.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- HASIL TELAAH LENGKAP KEPALA SEKOLAH (AI ANALYSIS) -->
+  {% if sup.ai_analysis %}
+  <div style="background: #ffffff; border: 1px solid #e0e7ff; border-radius: var(--radius-md); padding: 1.5rem;">
+    <!-- Action Bar Penyesuaian Analisis -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+      <span style="font-size: 0.85rem; color: var(--text-muted);">
+        Terakhir disesuaikan: <strong>{{ sup.ai_analysis.reviewed_at.strftime('%d/%m/%Y %H:%M') if sup.ai_analysis.reviewed_at else '-' }}</strong>
+      </span>
+      <button type="button" class="btn btn-outline" onclick="openModal('modalEditAIAnalysis')" style="font-size: 0.825rem; font-weight: 700; color: #4338ca; border-color: #c7d2fe; background: #f5f3ff;">
+        ✏️ Edit / Sesuaikan Narasi & Rekomendasi
+      </button>
+    </div>
+
+    <!-- 1. Ringkasan Eksekutif -->
+    <div style="margin-bottom: 1.5rem;">
+      <h3 style="font-size: 1.05rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>📋</span> Ringkasan Eksekutif Supervisi Klinis
+      </h3>
+      <p style="font-size: 0.925rem; line-height: 1.7; color: #334155; margin-bottom: 0;">
+        {{ sup.ai_analysis.summary }}
+      </p>
+    </div>
+
+    <!-- 2. Ulasan Kekuatan & Kualitas Pembelajaran -->
+    <div style="margin-bottom: 1.5rem; background: #f8fafc; border-radius: var(--radius-sm); padding: 1.15rem;">
+      <h4 style="font-size: 0.95rem; font-weight: 700; color: #059669; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>🌟</span> Analisis Kekuatan Pedagogis di Ruang Kelas
+      </h4>
+      <p style="font-size: 0.9rem; line-height: 1.65; color: #334155; margin-bottom: 0;">
+        {{ sup.ai_analysis.strengths }}
+      </p>
+    </div>
+
+    <!-- 3. Kesenjangan & Tantangan Belajar -->
+    <div style="margin-bottom: 1.5rem; background: #fff5f5; border-radius: var(--radius-sm); padding: 1.15rem;">
+      <h4 style="font-size: 0.95rem; font-weight: 700; color: #dc2626; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>🔍</span> Telaah Kesenjangan & Area Peningkatan Mutu
+      </h4>
+      <p style="font-size: 0.9rem; line-height: 1.65; color: #334155; margin-bottom: 0;">
+        {{ sup.ai_analysis.improvement_areas }}
+      </p>
+    </div>
+
+    <!-- 4. Rekomendasi Tindak Lanjut Strategis Kepala Sekolah -->
+    <div style="margin-bottom: 1.5rem; background: #eef2ff; border-left: 4px solid #6366f1; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; padding: 1.15rem 1.25rem;">
+      <h4 style="font-size: 0.95rem; font-weight: 700; color: #4338ca; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>💡</span> Rekomendasi Rencana Tindak Lanjut (Mentoring & Coaching)
+      </h4>
+      <div style="font-size: 0.9rem; line-height: 1.7; color: #1e1b4b; white-space: pre-line;">
+        {{ sup.ai_analysis.recommendations }}
+      </div>
+    </div>
+
+    <!-- 5. Catatan Apresiatif Kepala Sekolah -->
+    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-md); padding: 1.15rem 1.25rem;">
+      <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #047857; margin-bottom: 0.25rem;">Catatan Apresiatif & Refleksi Kepala Sekolah:</div>
+      <p style="font-size: 0.925rem; color: #065f46; font-style: italic; line-height: 1.6; margin-bottom: 0.5rem;">
+        "{{ sup.ai_analysis.comment }}"
+      </p>
+      <div style="display: flex; justify-content: flex-end; font-size: 0.8rem; color: #047857; font-weight: 600;">
+        — Kepala Sekolah / Supervisor DAMPAK
+      </div>
+    </div>
+
+    <!-- Tombol Bawah untuk Edit Analisis -->
+    <div style="display: flex; justify-content: flex-end; margin-top: 1.25rem; padding-top: 0.85rem; border-top: 1px solid #f1f5f9;">
+      <button type="button" class="btn btn-outline" onclick="openModal('modalEditAIAnalysis')" style="font-size: 0.825rem; font-weight: 700; color: #4338ca; border-color: #c7d2fe; background: #ffffff;">
+        ✏️ Sesuaikan / Revisi Hasil Analisis Ini
+      </button>
+    </div>
+  </div>
+  {% else %}
+  <div style="background: #ffffff; border: 1.5px dashed #cbd5e1; border-radius: var(--radius-md); padding: 2rem; text-align: center;">
+    <div style="font-size: 2.25rem; margin-bottom: 0.5rem;">🤖</div>
+    <h3 style="font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-bottom: 0.35rem;">Analisis Kepala Sekolah AI Belum Dibuat</h3>
+    <p style="font-size: 0.875rem; color: var(--text-muted); max-width: 550px; margin: 0 auto 1.25rem auto;">
+      Data persentase <strong>Memahami, Mengaplikasikan, dan Refleksi</strong> telah dihitung. Klik tombol di bawah untuk membuat analisis naratif komprehensif menggunakan kecerdasan buatan (Gemini AI).
+    </p>
+    <button type="button" class="btn btn-primary" onclick="startAIAnalysis({{ sup.id }})" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; font-weight: 700;">
+      ✨ Mulai Analisis Pembelajaran Mendalam
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ================================================================= -->
+<!-- SECTION: TABEL RINCIAN 40 BUTIR INDIKATOR OBSERVASI -->
+<!-- ================================================================= -->
+<div class="card card-dashed-violet">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+    <div>
+      <h2 class="card-title" style="margin-bottom: 0.25rem;">Rincian Penilaian 40 Butir Indikator Observasi</h2>
+      <p class="card-subtitle" style="margin-bottom: 0;">Skor penilaian guru pada masing-masing aspek indikator pembelajaran (skala 1–4).</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem; font-size: 0.8rem; align-items: center;">
+      <span class="role-tag score-badge-4">4 = Konsisten</span>
+      <span class="role-tag score-badge-3">3 = Berkembang</span>
+      <span class="role-tag score-badge-2">2 = Mulai Terlihat</span>
+      <span class="role-tag score-badge-1">1 = Belum Terlihat</span>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th style="width: 50px; text-align: center;">No</th>
+          <th>Aspek yang Diamati: Pelaksanaan Pembelajaran</th>
+          <th style="width: 140px; text-align: center;">Skor Guru</th>
+          <th style="width: 150px; text-align: center;">Rerata Semua Guru</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set ns = namespace(last_kat='', last_sub='') %}
+        {% for ind in indikators %}
+          {# Header Kategori Utama jika berubah #}
+          {% if ind.kategori_utama != ns.last_kat %}
+            {% set ns.last_kat = ind.kategori_utama %}
+            <tr style="background-color: #f1f5f9;">
+              <td colspan="4" style="font-weight: 800; color: #1e293b; padding: 0.65rem 0.75rem; text-transform: uppercase;">
+                📌 {{ ind.kategori_utama }}
+              </td>
+            </tr>
+          {% endif %}
+
+          {# Header Sub Kategori jika berubah #}
+          {% if ind.sub_kategori != ns.last_sub %}
+            {% set ns.last_sub = ind.sub_kategori %}
+            <tr style="background-color: #f8fafc;">
+              <td colspan="4" style="font-weight: 700; color: #4338ca; padding: 0.45rem 0.75rem;">
+                🔹 {{ ind.sub_kategori }}
+              </td>
+            </tr>
+          {% endif %}
+
+          <tr>
+            <td style="text-align: center; font-weight: 600; color: var(--text-muted);">{{ ind.urutan }}</td>
+            <td style="line-height: 1.45;">{{ ind.aspek_indikator }}</td>
+            <td style="text-align: center;">
+              {% set skor = nilai_map.get(ind.id, 0) %}
+              <span class="role-tag {% if skor >= 4 %}score-badge-4{% elif skor >= 3 %}score-badge-3{% elif skor >= 2 %}score-badge-2{% else %}score-badge-1{% endif %}" style="font-size: 0.95rem; font-weight: 800; padding: 0.25rem 0.75rem; border-radius: 6px;">
+                {{ skor|int if skor == skor|int else skor }}
+              </span>
+            </td>
+            <td style="text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+              {{ '%.2f'|format(ind.rata_rata_aspek) }}
+            </td>
+          </tr>
+        {% endfor %}
+
+        {# Baris Total Skor Guru #}
+        <tr style="background-color: #eef2ff; font-weight: 800; border-top: 2px solid #6366f1;">
+          <td colspan="2" style="text-align: right; padding: 0.85rem;">TOTAL SKOR:</td>
+          <td style="text-align: center; font-size: 1.1rem; color: #4338ca;">
+            {{ sup.total_skor|int if sup.total_skor == sup.total_skor|int else sup.total_skor }} / {{ sup.skor_maksimal|int }}
+          </td>
+          <td></td>
+        </tr>
+
+        {# Baris Nilai Akhir (Skala 0 - 100) #}
+        <tr style="background-color: #ecfdf5; font-weight: 800;">
+          <td colspan="2" style="text-align: right; padding: 0.85rem;">NILAI AKHIR (SKALA 0 - 100):</td>
+          <td style="text-align: center; font-size: 1.25rem; color: #059669;">
+            {{ '%.1f'|format(sup.nilai_akhir) }}
+          </td>
+          <td style="text-align: center; color: #059669; font-weight: 700;">
+            {{ sup.predikat }}
+          </td>
+        </tr>
+
+        {# Baris Konversi Skala 1 - 4 #}
+        <tr style="background-color: #eff6ff; font-weight: 800;">
+          <td colspan="2" style="text-align: right; padding: 0.85rem;">KONVERSI SKALA 1 - 4:</td>
+          <td style="text-align: center; font-size: 1.15rem; color: #2563eb;">
+            {{ '%.2f'|format(sup.konversi_skala_4) }}
+          </td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ================================================================= -->
+<!-- OVERLAY PROSES SEDANG MENGANALISA (AI PROCESSING MODAL) -->
+<!-- ================================================================= -->
+<div id="overlayAnalyzing" class="ai-overlay">
+  <div style="background: #ffffff; border-radius: var(--radius-lg); max-width: 520px; width: 90%; padding: 2.5rem 2rem; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4); border: 1px solid rgba(255,255,255,0.2);">
+    <div class="ai-orb">
+      <span>🧠</span>
+    </div>
+    <h3 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">
+      Sedang Menganalisis Data Pembelajaran...
+    </h3>
+    <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 1.75rem;">
+      Kepala Sekolah AI sedang mensintesis profil belajar guru berbasis pedagogi mendalam (*Deep Learning*).
+    </p>
+
+    <!-- Step Progress Tracker -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md); padding: 1rem 1.25rem; text-align: left; margin-bottom: 1.5rem; font-size: 0.85rem;">
+      <div id="step1" style="color: #059669; font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>✓</span> 1. Python menghitung dimensi Memahami, Mengaplikasikan, & Refleksi
+      </div>
+      <div id="step2" style="color: #059669; font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>✓</span> 2. Mengidentifikasi kekuatan pedagogis & area pembenahan guru
+      </div>
+      <div id="step3" style="color: #4f46e5; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="display: inline-block; animation: spinSlow 2s linear infinite;">⏳</span> 3. Gemini AI Kepala Sekolah menyusun rekomendasi supervisi...
+      </div>
+    </div>
+
+    <div style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">
+      Mohon tidak menutup halaman ini, proses memerlukan beberapa detik...
+    </div>
+  </div>
+</div>
+
+<!-- Modal Edit / Sesuaikan Hasil Analisis Supervisi -->
+<div id="modalEditAIAnalysis" class="modal-overlay">
+  <div class="modal-content" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 1.3rem;">✏️</span>
+        <h3 style="font-size: 1.2rem; font-weight: 700; margin: 0;">Sesuaikan & Edit Analisis Kepala Sekolah</h3>
+      </div>
+      <button type="button" class="modal-close" onclick="closeModal('modalEditAIAnalysis')">&times;</button>
+    </div>
+    
+    <form action="{{ url_for('main.edit_ai_analysis', supervision_id=sup.id) }}" method="POST">
+      <div style="padding: 0.5rem 0 1.25rem 0;">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          Anda dapat mengubah, menambahkan penekanan, atau menyesuaikan narasi hasil telaah supervisi guru <strong>{{ sup.nama_guru }}</strong> sebelum disimpan atau dicetak.
+        </p>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label" style="font-weight: 700; color: #1e293b;">📋 Ringkasan Eksekutif Supervisi Klinis:</label>
+          <textarea name="summary" rows="3" class="form-control" style="font-size: 0.9rem; line-height: 1.5;" required>{{ sup.ai_analysis.summary if sup.ai_analysis else '' }}</textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label" style="font-weight: 700; color: #047857;">🌟 Analisis Kekuatan Pedagogis di Ruang Kelas:</label>
+          <textarea name="strengths" rows="3" class="form-control" style="font-size: 0.9rem; line-height: 1.5;">{{ sup.ai_analysis.strengths if sup.ai_analysis else '' }}</textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label" style="font-weight: 700; color: #b91c1c;">🔍 Telaah Kesenjangan & Area Peningkatan Mutu (Kelemahan):</label>
+          <textarea name="improvement_areas" rows="3" class="form-control" style="font-size: 0.9rem; line-height: 1.5;">{{ sup.ai_analysis.improvement_areas if sup.ai_analysis else '' }}</textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label" style="font-weight: 700; color: #4338ca;">💡 Rekomendasi Rencana Tindak Lanjut (Mentoring & Coaching):</label>
+          <textarea name="recommendations" rows="4" class="form-control" style="font-size: 0.9rem; line-height: 1.5;">{{ sup.ai_analysis.recommendations if sup.ai_analysis else '' }}</textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0.5rem;">
+          <label class="form-label" style="font-weight: 700; color: #065f46;">✍️ Catatan Apresiatif & Refleksi Kepala Sekolah:</label>
+          <textarea name="comment" rows="2" class="form-control" style="font-size: 0.9rem; line-height: 1.5;">{{ sup.ai_analysis.comment if sup.ai_analysis else '' }}</textarea>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modalEditAIAnalysis')">Batal</button>
+        <button type="submit" class="btn btn-primary" style="background: #4f46e5;">💾 Simpan Penyesuaian Analisis</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('active');
+  }
+
+  function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove('active');
+  }
+
+  window.addEventListener('click', function(event) {
+    if (event.target.classList.contains('modal-overlay')) {
+      event.target.classList.remove('active');
+    }
+  });
+
+  function startAIAnalysis(supervisionId) {
+    const overlay = document.getElementById('overlayAnalyzing');
+    if (overlay) {
+      overlay.classList.add('active');
+    }
+
+    // Panggil endpoint analisis via AJAX POST
+    fetch('/supervisions/' + supervisionId + '/analisa', {
+      method: 'POST',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Update step status
+        const step3 = document.getElementById('step3');
+        if (step3) {
+          step3.innerHTML = '<span>✓</span> 3. Analisis Kepala Sekolah AI selesai!';
+          step3.style.color = '#059669';
+        }
+        setTimeout(() => {
+          window.location.reload();
+        }, 600);
+      } else {
+        alert('Gagal menganalisis: ' + (data.message || 'Terjadi kesalahan sistem.'));
+        if (overlay) overlay.classList.remove('active');
+      }
+    })
+    .catch(error => {
+      console.error('Error in AI analysis:', error);
+      // Fallback reload in case of redirect
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    });
+  }
+</script>
+{% endblock %}
