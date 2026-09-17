@@ -43,3 +43,8 @@ instance/*.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Local Docs / Notes
+teori.md
+gemini.md
+GEMINI.md
