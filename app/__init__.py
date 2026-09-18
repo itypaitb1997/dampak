@@ -39,6 +39,35 @@ def create_app(test_config=None):
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
 
+    # Otomatis buat tabel dan akun admin default jika belum ada (misal deploy di online/server baru)
+    if not (test_config and test_config.get("TESTING")):
+        with app.app_context():
+            try:
+                db.create_all()
+                from app.models import Period
+                admin = User.query.filter_by(username="admin").first()
+                if not admin:
+                    admin = User(
+                        username="admin",
+                        full_name="Administrator Sistem",
+                        role="ADMIN",
+                        is_active=True,
+                    )
+                    admin.set_password(os.getenv("ADMIN_PASSWORD", "admin123"))
+                    db.session.add(admin)
+
+                period = Period.query.filter_by(status="AKTIF").first()
+                if not period:
+                    period = Period(
+                        tahun_ajaran="2025/2026",
+                        semester="-",
+                        status="AKTIF"
+                    )
+                    db.session.add(period)
+                db.session.commit()
+            except Exception as e:
+                app.logger.warning(f"Auto-init database skipped: {e}")
+
     # Register CLI commands
     @app.cli.command("init-db")
     @click.option("--admin-password", default="admin123", help="Password default untuk user admin.")
