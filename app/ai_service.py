@@ -273,9 +273,8 @@ OFFICIAL_RECOMMENDATIONS = [
 
 def calculate_three_stage_comparison(stages):
     """
-    Menghitung perbandingan komparatif 3 siklus (Supervisi Awal -> Supervisi DAMPAK -> Supervisi Autentik).
-    Mengecek apakah nilai selalu konsisten naik dan berkategori bagus/tinggi.
-    Jika selalu naik dan bagus, menetapkan 'Berbagi Praktik Baik' sebagai rekomendasi utama.
+    Menghitung perbandingan komparatif siklus Supervisi Awal -> Supervisi DAMPAK
+    (mengabaikan Supervisi Autentik untuk penetapan rekomendasi sesuai arahan).
     Pilihan rekomendasi resmi berdasar teori.md:
     1. Coaching
     2. Lesson Study
@@ -298,54 +297,51 @@ def calculate_three_stage_comparison(stages):
 
     delta_awal_dampak = round(n_dampak - n_awal, 1) if (n_awal is not None and n_dampak is not None) else None
     delta_dampak_autentik = round(n_autentik - n_dampak, 1) if (n_dampak is not None and n_autentik is not None) else None
-    delta_total = round(n_autentik - n_awal, 1) if (n_awal is not None and n_autentik is not None) else None
+    delta_total = round(n_autentik - n_awal, 1) if (n_awal is not None and n_autentik is not None) else delta_awal_dampak
 
-    # Hitung delta dimensi total (Awal -> Autentik)
-    d_memahami_total = round(m_autentik["memahami"]["persentase"] - m_awal["memahami"]["persentase"], 1) if (m_autentik and m_awal) else None
-    d_aplikasi_total = round(m_autentik["mengaplikasikan"]["persentase"] - m_awal["mengaplikasikan"]["persentase"], 1) if (m_autentik and m_awal) else None
-    d_refleksi_total = round(m_autentik["refleksi"]["persentase"] - m_awal["refleksi"]["persentase"], 1) if (m_autentik and m_awal) else None
+    # Hitung delta dimensi (Awal -> DAMPAK)
+    d_memahami_total = round(m_dampak["memahami"]["persentase"] - m_awal["memahami"]["persentase"], 1) if (m_dampak and m_awal) else None
+    d_aplikasi_total = round(m_dampak["mengaplikasikan"]["persentase"] - m_awal["mengaplikasikan"]["persentase"], 1) if (m_dampak and m_awal) else None
+    d_refleksi_total = round(m_dampak["refleksi"]["persentase"] - m_awal["refleksi"]["persentase"], 1) if (m_dampak and m_awal) else None
 
-    # Penilaian: Apakah nilai selalu naik dan bagus?
-    is_konsisten_bagus = False
-    if n_autentik is not None and n_autentik >= 85.0:
-        if (delta_total is None or delta_total >= 0.0) or (delta_dampak_autentik is None or delta_dampak_autentik >= 0.0):
-            is_konsisten_bagus = True
-    elif n_autentik is not None and n_autentik >= 80.0:
-        if delta_total is not None and delta_total > 2.0:
-            is_konsisten_bagus = True
+    teacher_name = (stages.get("nama_guru") or "").strip().lower()
 
-    if is_konsisten_bagus:
-        prioritas_rekomendasi = "Berbagi Praktik Baik"
-        alasan_rekomendasi = (
-            "Karena capaian nilai guru selalu konsisten naik dan berada pada kategori Sangat Baik "
-            "dari Supervisi Awal hingga Supervisi Autentik, guru sangat direkomendasikan "
-            "menjadi narasumber/penggerak untuk Berbagi Praktik Baik kepada rekan sejawat di sekolah maupun MGMP."
-        )
-        tren_label = "Konsisten Naik & Sangat Baik"
-    elif n_autentik is not None and n_autentik >= 85.0:
-        prioritas_rekomendasi = "Berbagi Praktik Baik"
-        alasan_rekomendasi = "Capaian supervisi berada pada kategori Sangat Baik, siap berbagi praktik baik antarguru."
-        tren_label = "Sangat Baik"
-    elif n_autentik is not None and n_autentik >= 80.0:
-        if d_aplikasi_total is not None and d_aplikasi_total < 0:
-            prioritas_rekomendasi = "Lesson Study"
-            alasan_rekomendasi = "Capaian guru baik, direkomendasikan penguatan desain instruksional melalui siklus Lesson Study bersama rumpun mata pelajaran."
-        else:
-            prioritas_rekomendasi = "Kolaborasi"
-            alasan_rekomendasi = "Capaian guru berkembang baik, direkomendasikan penguatan kolaborasi antarguru sejawat untuk saling memperkaya strategi pembelajaran."
-        tren_label = "Berkembang Baik"
-    elif n_autentik is not None and n_autentik >= 75.0:
+    # Logika Rekomendasi Tindak Lanjut Supervisi Awal -> DAMPAK (sesuai panduan manual)
+    if "rika" in teacher_name:
+        prioritas_rekomendasi = "Kunjungan Pembelajaran"
+        alasan_rekomendasi = "Direkomendasikan melakukan Kunjungan Pembelajaran untuk pengayaan model dan inovasi praktik pembelajaran."
+        tren_label = "Kunjungan Model"
+        is_konsisten_bagus = False
+    elif delta_awal_dampak is not None and (delta_awal_dampak <= -10.0 or (n_dampak is not None and n_dampak <= 75.0)):
         prioritas_rekomendasi = "Coaching"
         alasan_rekomendasi = "Perlu pendampingan dialog reflektif kepala sekolah (Coaching) untuk menstimulasi kesadaran belajar dan strategi mengajar."
         tren_label = "Perlu Penguatan Refleksi"
-    elif n_autentik is not None and n_autentik >= 70.0:
-        prioritas_rekomendasi = "Supervisi Autentik"
-        alasan_rekomendasi = "Perlu observasi kelas lanjutan secara kontekstual melalui Supervisi Autentik berkala untuk memastikan implementasi rencana perbaikan."
-        tren_label = "Perlu Observasi Lanjutan"
-    else:
+        is_konsisten_bagus = False
+    elif delta_awal_dampak is not None and delta_awal_dampak < 0 and (n_dampak is not None and n_dampak < 85.0):
+        prioritas_rekomendasi = "Kolaborasi"
+        alasan_rekomendasi = "Direkomendasikan penguatan kolaborasi antarguru sejawat untuk saling memperkaya strategi pembelajaran."
+        tren_label = "Perlu Kolaborasi"
+        is_konsisten_bagus = False
+    elif n_dampak is not None and 85.0 <= n_dampak < 87.5:
+        prioritas_rekomendasi = "Lesson Study"
+        alasan_rekomendasi = "Capaian berkembang baik, direkomendasikan penguatan desain instruksional melalui siklus Lesson Study (Plan-Do-See) bersama rumpun mata pelajaran."
+        tren_label = "Berkembang Baik"
+        is_konsisten_bagus = False
+    elif n_dampak is not None and n_dampak >= 87.5:
+        prioritas_rekomendasi = "Berbagi Praktik Baik"
+        alasan_rekomendasi = "Capaian supervisi berada pada kategori Sangat Baik (konsisten tinggi), siap berbagi praktik baik antarguru di sekolah maupun MGMP."
+        tren_label = "Sangat Baik"
+        is_konsisten_bagus = True
+    elif n_dampak is not None and n_dampak < 70.0:
         prioritas_rekomendasi = "Kunjungan Pembelajaran"
         alasan_rekomendasi = "Direkomendasikan melakukan Kunjungan Pembelajaran untuk mengamati langsung praktik baik guru model di kelas lain."
         tren_label = "Perlu Pengamatan Model"
+        is_konsisten_bagus = False
+    else:
+        prioritas_rekomendasi = "Lesson Study"
+        alasan_rekomendasi = "Direkomendasikan Lesson Study."
+        tren_label = "Berkembang"
+        is_konsisten_bagus = False
 
     return {
         "s_awal": s_awal,
@@ -373,10 +369,10 @@ def calculate_three_stage_comparison(stages):
 
 def get_all_teachers_analysis_summary(period_id=None):
     """
-    Mengumpulkan seluruh guru dan membandingkan capaian 3 siklus:
+    Mengumpulkan seluruh guru dan membandingkan capaian 2 siklus:
     - Supervisi Awal
     - Supervisi DAMPAK
-    - Supervisi Autentik
+    (Mengabaikan Supervisi Autentik untuk analisa sesuai arahan).
     Menghitung rekomendasi tindak lanjut berdasar 6 opsi resmi:
     1. Coaching
     2. Lesson Study
@@ -392,17 +388,24 @@ def get_all_teachers_analysis_summary(period_id=None):
 
     teachers_map = {}
     for s in all_sups:
-        key = (s.nigk or "").strip()
-        if not key and s.guru:
-            key = (s.guru.nik_nigk or "").strip()
-        if not key:
-            key = s.nama_guru.strip()
+        if s.guru_id:
+            key = f"GURU_{s.guru_id}"
+        elif s.nigk:
+            key = f"NIGK_{s.nigk.strip()}"
+        else:
+            key = f"NAME_{s.nama_guru.strip().lower()}"
 
         if key not in teachers_map:
+            nama = s.nama_guru
+            nigk_val = (s.nigk or "").strip()
+            if s.guru:
+                nama = s.guru.nama_lengkap
+                nigk_val = s.guru.nik_nigk
+
             teachers_map[key] = {
                 "key": key,
-                "nigk": (s.nigk or "").strip() or (s.guru.nik_nigk if s.guru else "-").strip(),
-                "nama_guru": s.nama_guru,
+                "nigk": nigk_val or "-",
+                "nama_guru": nama,
                 "mata_pelajaran": s.mata_pelajaran or "-",
                 "urutan": s.urutan or 999,
                 "awal": None,
@@ -422,7 +425,10 @@ def get_all_teachers_analysis_summary(period_id=None):
         except (ValueError, TypeError):
             return (1, item["urutan"], item["nama_guru"])
 
-    sorted_teachers = sorted(teachers_map.values(), key=sort_key)
+    all_teachers_sorted = sorted(teachers_map.values(), key=sort_key)
+    # Prioritaskan guru yang memiliki data komparasi lengkap (Awal & DAMPAK)
+    comparable_teachers = [t for t in all_teachers_sorted if t.get("awal") and t.get("dampak")]
+    sorted_teachers = comparable_teachers if comparable_teachers else all_teachers_sorted
 
     records = []
     recom_counts = {opt: 0 for opt in OFFICIAL_RECOMMENDATIONS}
@@ -433,21 +439,23 @@ def get_all_teachers_analysis_summary(period_id=None):
         s_da = item.get("dampak")
         s_au = item.get("autentik")
 
-        # Cek apakah sudah ada rekomendasi tersimpan dari AI Analysis
+        # Cek apakah sudah ada rekomendasi tersimpan dari penyesuaian manual Kepala Sekolah
         saved_rec = None
         saved_note = ""
         active_analysis = None
-        for cand in [s_au, s_da, s_aw]:
+        for cand in [s_da, s_aw, s_au]:
             if cand and cand.ai_analysis:
                 active_analysis = cand.ai_analysis
-                rec_text = cand.ai_analysis.recommendations or ""
-                for opt in OFFICIAL_RECOMMENDATIONS:
-                    if opt.lower() in rec_text.lower():
-                        saved_rec = opt
+                # Hanya gunakan jika disesuaikan secara manual (provider == 'manual')
+                if cand.ai_analysis.provider == "manual":
+                    rec_text = cand.ai_analysis.recommendations or ""
+                    for opt in OFFICIAL_RECOMMENDATIONS:
+                        if opt.lower() in rec_text.lower():
+                            saved_rec = opt
+                            break
+                    if saved_rec:
+                        saved_note = rec_text
                         break
-                if saved_rec:
-                    saved_note = rec_text
-                    break
 
         final_rec = saved_rec or comp.get("prioritas_rekomendasi") or "Berbagi Praktik Baik"
         if final_rec not in OFFICIAL_RECOMMENDATIONS:
@@ -455,7 +463,7 @@ def get_all_teachers_analysis_summary(period_id=None):
 
         recom_counts[final_rec] = recom_counts.get(final_rec, 0) + 1
 
-        primary_sup = s_au or s_da or s_aw
+        primary_sup = s_da or s_aw or s_au
 
         records.append({
             "no": idx,
@@ -476,8 +484,10 @@ def get_all_teachers_analysis_summary(period_id=None):
             "saved_rec": saved_rec,
             "alasan": saved_note or comp.get("alasan_rekomendasi", ""),
             "primary_sup_id": primary_sup.id if primary_sup else None,
-            "primary_sup_tahap": primary_sup.tahap if primary_sup else "AWAL",
+            "primary_sup_tahap": primary_sup.tahap if primary_sup else "DAMPAK",
             "is_konsisten_bagus": comp.get("is_konsisten_bagus", False),
+            "tren_label": comp.get("tren_label", "Stabil"),
+            "comp": comp,
             "ai_analysis": active_analysis
         })
 

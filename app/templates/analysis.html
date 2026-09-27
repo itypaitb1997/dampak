@@ -7,13 +7,13 @@
 <div class="card card-dashed-violet" style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
   <div>
     <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #f5f3ff; color: #7c3aed; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; margin-bottom: 0.75rem; border: 1px dashed #c4b5fd; font-weight: 600;">
-      <span>●</span> Analisis Komparatif 3 Siklus & Tindak Lanjut
+      <span>●</span> Analisis Komparatif Supervisi Awal &amp; DAMPAK
     </div>
     <h1 style="font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.4rem; color: #0f172a;">
       Modul Analisa AI — Matriks Analisa &amp; Rekomendasi Supervisi
     </h1>
     <p style="color: #64748b; font-size: 0.95rem; max-width: 700px; margin-bottom: 0;">
-      Perbandingan capaian guru dari <strong>Supervisi Awal &rarr; Supervisi DAMPAK &rarr; Supervisi Autentik</strong> dengan penetapan 6 bentuk rekomendasi tindak lanjut resmi kepala sekolah.
+      Perbandingan capaian guru dari <strong>Supervisi Awal &rarr; Supervisi DAMPAK</strong> dengan penetapan bentuk rekomendasi tindak lanjut resmi kepala sekolah (mengabaikan supervisi autentik).
     </p>
   </div>
 
@@ -23,7 +23,7 @@
       {{ active_period.tahun_ajaran if active_period else 'Aktif' }}
     </div>
     <div style="display: inline-block; margin-top: 0.35rem;">
-      <span class="role-tag role-GURU" style="font-size: 0.75rem;">{{ total_guru }} Guru Terdaftar</span>
+      <span class="role-tag role-GURU" style="font-size: 0.75rem;">{{ total_guru }} Guru Dianalisis</span>
     </div>
   </div>
 </div>
@@ -31,7 +31,7 @@
 <!-- 6 Distribusi Rekomendasi Resmi -->
 <div style="margin-bottom: 1rem;">
   <h3 style="font-size: 1rem; font-weight: 700; color: #334155; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-    <span>📊</span> Distribusi Rekomendasi Tindak Lanjut Pasca Supervisi Autentik
+    <span>📊</span> Distribusi Rekomendasi Tindak Lanjut Pasca Supervisi DAMPAK
   </h3>
 </div>
 
@@ -114,10 +114,10 @@
   <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); background: #fafafa; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
     <div>
       <h2 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.25rem;">
-        Perbandingan Capaian 3 Siklus & Rekomendasi Guru
+        Perbandingan Capaian Supervisi Awal &amp; DAMPAK serta Rekomendasi Guru
       </h2>
       <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0;">
-        Pilih atau sesuaikan bentuk tindak lanjut berdasar catatan reflektif dan rekam jejak penilaian guru.
+        Analisis berbasis capaian Supervisi Awal dan Supervisi DAMPAK (mengabaikan supervisi autentik).
       </p>
     </div>
 
@@ -158,20 +158,20 @@
           <th style="width: 70px; text-align: center;">NIGK</th>
           <th>Nama Guru</th>
           <th>Mata Pelajaran</th>
-          <th style="text-align: center; width: 120px;">
+          <th style="text-align: center; width: 130px;">
             <div>Supervisi Awal</div>
             <span style="font-size: 0.7rem; font-weight: 500; color: #64748b;">(Baseline)</span>
           </th>
-          <th style="text-align: center; width: 130px;">
+          <th style="text-align: center; width: 140px;">
             <div>Supervisi DAMPAK</div>
             <span style="font-size: 0.7rem; font-weight: 500; color: #64748b;">(Terjadwal)</span>
           </th>
-          <th style="text-align: center; width: 130px;">
-            <div>Supervisi Autentik</div>
-            <span style="font-size: 0.7rem; font-weight: 500; color: #64748b;">(Kunjungan Nyata)</span>
+          <th style="text-align: center; width: 120px;">
+            <div>Perubahan</div>
+            <span style="font-size: 0.7rem; font-weight: 500; color: #64748b;">(Delta)</span>
           </th>
           <th style="text-align: center; width: 220px;">Rekomendasi Tindak Lanjut</th>
-          <th style="text-align: center; width: 110px;">Aksi</th>
+          <th style="text-align: center; width: 100px;">Aksi</th>
         </tr>
       </thead>
       <tbody>
@@ -214,41 +214,25 @@
                   {{ '%.1f'|format(t.nilai_dampak) }}
                 </span>
               </a>
-              {% if t.delta_awal_dampak is not none %}
-                <div style="font-size: 0.72rem; font-weight: 700; margin-top: 0.15rem;">
-                  {% if t.delta_awal_dampak > 0 %}
-                    <span style="color: #059669;">▲ +{{ t.delta_awal_dampak }}</span>
-                  {% elif t.delta_awal_dampak < 0 %}
-                    <span style="color: #e11d48;">▼ {{ t.delta_awal_dampak }}</span>
-                  {% else %}
-                    <span style="color: #64748b;">▬ 0.0</span>
-                  {% endif %}
-                </div>
-              {% endif %}
             {% else %}
               <span style="color: #94a3b8; font-size: 0.85rem;">-</span>
             {% endif %}
+            <!-- Nilai Autentik disimpan agar kompatibel -->
+            <span style="display: none;" data-autentik="{{ '%.1f'|format(t.nilai_autentik) if t.nilai_autentik is not none else '' }}">{{ '%.1f'|format(t.nilai_autentik) if t.nilai_autentik is not none else '' }}</span>
           </td>
 
-          <!-- Nilai Supervisi Autentik -->
+          <!-- Delta Awal -> DAMPAK -->
           <td style="text-align: center;">
-            {% if t.nilai_autentik is not none %}
-              <a href="{{ url_for('main.supervisi_autentik_detail', supervision_id=t.s_autentik.id) if t.s_autentik else '#' }}" style="text-decoration: none;" title="Lihat Supervisi Autentik">
-                <span style="font-weight: 800; font-size: 1.05rem; color: #7c3aed;">
-                  {{ '%.1f'|format(t.nilai_autentik) }}
-                </span>
-              </a>
-              {% if t.delta_dampak_autentik is not none %}
-                <div style="font-size: 0.72rem; font-weight: 700; margin-top: 0.15rem;">
-                  {% if t.delta_dampak_autentik > 0 %}
-                    <span style="color: #059669;">▲ +{{ t.delta_dampak_autentik }}</span>
-                  {% elif t.delta_dampak_autentik < 0 %}
-                    <span style="color: #e11d48;">▼ {{ t.delta_dampak_autentik }}</span>
-                  {% else %}
-                    <span style="color: #64748b;">▬ 0.0</span>
-                  {% endif %}
-                </div>
-              {% endif %}
+            {% if t.delta_awal_dampak is not none %}
+              <div style="font-size: 0.85rem; font-weight: 800;">
+                {% if t.delta_awal_dampak > 0 %}
+                  <span style="color: #059669; background: #ecfdf5; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #a7f3d0;">▲ +{{ '%.1f'|format(t.delta_awal_dampak) }}</span>
+                {% elif t.delta_awal_dampak < 0 %}
+                  <span style="color: #e11d48; background: #fff1f2; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #fecdd3;">▼ {{ '%.1f'|format(t.delta_awal_dampak) }}</span>
+                {% else %}
+                  <span style="color: #64748b; background: #f8fafc; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #e2e8f0;">▬ 0.0</span>
+                {% endif %}
+              </div>
             {% else %}
               <span style="color: #94a3b8; font-size: 0.85rem;">-</span>
             {% endif %}
@@ -373,7 +357,7 @@
             Pilihan Bentuk Pendampingan &amp; Dukungan:
           </label>
           <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.6rem;">
-            Pilih satu dari 6 rekomendasi resmi pasca dialog reflektif supervisi autentik:
+            Pilih satu dari 6 rekomendasi resmi tindak lanjut supervisi DAMPAK:
           </p>
           <select name="recommendation" id="modalRecSelect" class="form-control" style="font-weight: 700; font-size: 0.95rem; padding: 0.6rem 0.85rem;" required>
             {% for opt in official_options %}

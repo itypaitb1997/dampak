@@ -308,10 +308,19 @@ def import_rekap_observasi(filepath_or_stream, filename="rekap_observasi.xlsx", 
     total_nilai_all = 0.0
     for idx, t in enumerate(teachers, start=1):
         guru = None
-        if t["nigk"]:
+        t_nama_clean = t["nama"].strip().lower()
+        # Cari berdasar kecocokan nama lengkap atau nama guru
+        for g in Guru.query.all():
+            g_nama_clean = g.nama_lengkap.strip().lower()
+            if g_nama_clean == t_nama_clean:
+                guru = g
+                break
+            if (g_nama_clean in t_nama_clean or t_nama_clean in g_nama_clean) and len(min(g_nama_clean, t_nama_clean)) >= 3:
+                guru = g
+                break
+
+        if not guru and t["nigk"]:
             guru = Guru.query.filter_by(nik_nigk=t["nigk"]).first()
-        if not guru:
-            guru = Guru.query.filter_by(nama_lengkap=t["nama"]).first()
 
         if not guru:
             generated_nigk = t["nigk"] or f"GURU-{idx:03d}"
