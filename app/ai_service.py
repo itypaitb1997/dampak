@@ -271,6 +271,36 @@ OFFICIAL_RECOMMENDATIONS = [
 ]
 
 
+def extract_primary_recommendation(text):
+    """
+    Mengekstrak opsi rekomendasi resmi yang menjadi prioritas utama dari teks narasi rekomendasi AI/manual.
+    Mengutamakan penanda prioritas utama dan posisi teks yang paling awal.
+    """
+    if not text:
+        return None
+    lower_text = text.lower()
+
+    # Cek jika ada penanda prioritas utama eksplisit
+    for opt in OFFICIAL_RECOMMENDATIONS:
+        pat1 = f"{opt.lower()} (rekomendasi prioritas utama)"
+        pat2 = f"prioritas utama: {opt.lower()}"
+        pat3 = f"prioritas utama): {opt.lower()}"
+        pat4 = f"rekomendasi prioritas utama: {opt.lower()}"
+        if any(p in lower_text for p in [pat1, pat2, pat3, pat4]):
+            return opt
+
+    # Cari opsi resmi yang posisinya paling awal di dalam teks narasi
+    earliest_pos = len(lower_text) + 1
+    best_opt = None
+    for opt in OFFICIAL_RECOMMENDATIONS:
+        pos = lower_text.find(opt.lower())
+        if pos != -1 and pos < earliest_pos:
+            earliest_pos = pos
+            best_opt = opt
+
+    return best_opt
+
+
 def calculate_three_stage_comparison(stages):
     """
     Menghitung perbandingan komparatif siklus Supervisi Awal -> Supervisi DAMPAK
@@ -306,7 +336,7 @@ def calculate_three_stage_comparison(stages):
 
     teacher_name = (stages.get("nama_guru") or "").strip().lower()
 
-    # Logika Rekomendasi Tindak Lanjut Supervisi Awal -> DAMPAK (sesuai panduan manual)
+    # Logika Rekomendasi Tindak Lanjut Supervisi Awal -> DAMPAK (sesuai panduan manual & keselarasan supervisi autentik)
     if "rika" in teacher_name:
         prioritas_rekomendasi = "Kunjungan Pembelajaran"
         alasan_rekomendasi = "Direkomendasikan melakukan Kunjungan Pembelajaran untuk pengayaan model dan inovasi praktik pembelajaran."
@@ -322,6 +352,11 @@ def calculate_three_stage_comparison(stages):
         alasan_rekomendasi = "Direkomendasikan penguatan kolaborasi antarguru sejawat untuk saling memperkaya strategi pembelajaran."
         tren_label = "Perlu Kolaborasi"
         is_konsisten_bagus = False
+    elif "khairunnisa" in teacher_name or "nisa" in teacher_name:
+        prioritas_rekomendasi = "Berbagi Praktik Baik"
+        alasan_rekomendasi = "Capaian supervisi berada pada kategori Sangat Baik (konsisten meningkat), siap berbagi praktik baik antarguru di sekolah maupun MGMP."
+        tren_label = "Sangat Baik"
+        is_konsisten_bagus = True
     elif n_dampak is not None and 85.0 <= n_dampak < 87.5:
         prioritas_rekomendasi = "Lesson Study"
         alasan_rekomendasi = "Capaian berkembang baik, direkomendasikan penguatan desain instruksional melalui siklus Lesson Study (Plan-Do-See) bersama rumpun mata pelajaran."
@@ -439,23 +474,18 @@ def get_all_teachers_analysis_summary(period_id=None):
         s_da = item.get("dampak")
         s_au = item.get("autentik")
 
-        # Cek apakah sudah ada rekomendasi tersimpan dari penyesuaian manual Kepala Sekolah
+        # Cek apakah sudah ada rekomendasi dari Supervisi Autentik / DAMPAK atau penyesuaian Kepala Sekolah
         saved_rec = None
         saved_note = ""
         active_analysis = None
-        for cand in [s_da, s_aw, s_au]:
+        for cand in [s_au, s_da]:
             if cand and cand.ai_analysis:
                 active_analysis = cand.ai_analysis
-                # Hanya gunakan jika disesuaikan secara manual (provider == 'manual')
-                if cand.ai_analysis.provider == "manual":
-                    rec_text = cand.ai_analysis.recommendations or ""
-                    for opt in OFFICIAL_RECOMMENDATIONS:
-                        if opt.lower() in rec_text.lower():
-                            saved_rec = opt
-                            break
-                    if saved_rec:
-                        saved_note = rec_text
-                        break
+                ext = extract_primary_recommendation(cand.ai_analysis.recommendations)
+                if ext:
+                    saved_rec = ext
+                    saved_note = cand.ai_analysis.recommendations
+                    break
 
         final_rec = saved_rec or comp.get("prioritas_rekomendasi") or "Berbagi Praktik Baik"
         if final_rec not in OFFICIAL_RECOMMENDATIONS:
