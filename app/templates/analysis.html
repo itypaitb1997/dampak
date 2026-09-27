@@ -158,17 +158,17 @@
           <th style="width: 70px; text-align: center;">NIGK</th>
           <th>Nama Guru</th>
           <th>Mata Pelajaran</th>
-          <th style="text-align: center; width: 130px;">
+          <th style="text-align: center; width: 120px;">
             <div>Supervisi Awal</div>
             <span style="font-size: 0.7rem; font-weight: 500; color: #64748b;">(Baseline)</span>
           </th>
-          <th style="text-align: center; width: 140px;">
+          <th style="text-align: center; width: 130px;">
             <div>Supervisi DAMPAK</div>
             <span style="font-size: 0.7rem; font-weight: 500; color: #64748b;">(Terjadwal)</span>
           </th>
-          <th style="text-align: center; width: 120px;">
-            <div>Perubahan</div>
-            <span style="font-size: 0.7rem; font-weight: 500; color: #64748b;">(Delta)</span>
+          <th style="text-align: center; width: 130px;">
+            <div>Supervisi Autentik</div>
+            <span style="font-size: 0.7rem; font-weight: 500; color: #64748b;">(Kunjungan Nyata)</span>
           </th>
           <th style="text-align: center; width: 220px;">Rekomendasi Tindak Lanjut</th>
           <th style="text-align: center; width: 100px;">Aksi</th>
@@ -214,25 +214,30 @@
                   {{ '%.1f'|format(t.nilai_dampak) }}
                 </span>
               </a>
+              {% if t.delta_awal_dampak is not none %}
+                <div style="font-size: 0.72rem; font-weight: 700; margin-top: 0.15rem;">
+                  {% if t.delta_awal_dampak > 0 %}
+                    <span style="color: #059669;">▲ +{{ '%.1f'|format(t.delta_awal_dampak) }}</span>
+                  {% elif t.delta_awal_dampak < 0 %}
+                    <span style="color: #e11d48;">▼ {{ '%.1f'|format(t.delta_awal_dampak) }}</span>
+                  {% else %}
+                    <span style="color: #64748b;">▬ 0.0</span>
+                  {% endif %}
+                </div>
+              {% endif %}
             {% else %}
               <span style="color: #94a3b8; font-size: 0.85rem;">-</span>
             {% endif %}
-            <!-- Nilai Autentik disimpan agar kompatibel -->
-            <span style="display: none;" data-autentik="{{ '%.1f'|format(t.nilai_autentik) if t.nilai_autentik is not none else '' }}">{{ '%.1f'|format(t.nilai_autentik) if t.nilai_autentik is not none else '' }}</span>
           </td>
 
-          <!-- Delta Awal -> DAMPAK -->
+          <!-- Nilai Supervisi Autentik (Ditampilkan sebagai info, tidak memengaruhi perhitungan) -->
           <td style="text-align: center;">
-            {% if t.delta_awal_dampak is not none %}
-              <div style="font-size: 0.85rem; font-weight: 800;">
-                {% if t.delta_awal_dampak > 0 %}
-                  <span style="color: #059669; background: #ecfdf5; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #a7f3d0;">▲ +{{ '%.1f'|format(t.delta_awal_dampak) }}</span>
-                {% elif t.delta_awal_dampak < 0 %}
-                  <span style="color: #e11d48; background: #fff1f2; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #fecdd3;">▼ {{ '%.1f'|format(t.delta_awal_dampak) }}</span>
-                {% else %}
-                  <span style="color: #64748b; background: #f8fafc; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #e2e8f0;">▬ 0.0</span>
-                {% endif %}
-              </div>
+            {% if t.nilai_autentik is not none %}
+              <a href="{{ url_for('main.supervisi_autentik_detail', supervision_id=t.s_autentik.id) if t.s_autentik else '#' }}" style="text-decoration: none;" title="Lihat Supervisi Autentik">
+                <span style="font-weight: 800; font-size: 1rem; color: #7c3aed;">
+                  {{ '%.1f'|format(t.nilai_autentik) }}
+                </span>
+              </a>
             {% else %}
               <span style="color: #94a3b8; font-size: 0.85rem;">-</span>
             {% endif %}

@@ -30,7 +30,7 @@ wheels/
 # SQLite Database
 instance/*.sqlite3
 instance/*.db
-*.sqlite3
+
 
 # IDE & OS
 .vscode/
