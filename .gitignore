@@ -28,8 +28,9 @@ wheels/
 .venv*
 
 # SQLite Database
-
-instance/*.db
+instance/
+*.sqlite3
+*.db
 
 
 # IDE & OS
