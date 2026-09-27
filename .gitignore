@@ -28,7 +28,7 @@ wheels/
 .venv*
 
 # SQLite Database
-instance/*.sqlite3
+
 instance/*.db
 
 
