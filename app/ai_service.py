@@ -301,6 +301,28 @@ def extract_primary_recommendation(text):
     return best_opt
 
 
+# Panduan Rekomendasi Manual Resmi (Sesuai arahan Kepala Sekolah / Perhitungan Manual)
+PANDUAN_MANUAL_REKOMENDASI = {
+    "ahmad": ("Berbagi Praktik Baik", "Capaian stabil dan baik pada siklus supervisi, siap berbagi praktik baik antarguru."),
+    "andi nita": ("Berbagi Praktik Baik", "Capaian meningkat signifikan pada supervisi DAMPAK, siap berbagi praktik baik."),
+    "desi": ("Berbagi Praktik Baik", "Capaian konsisten Sangat Baik, siap berbagi praktik baik pembelajaran."),
+    "dian": ("Berbagi Praktik Baik", "Capaian konsisten tinggi, siap mendiseminasikan praktik baik pembelajaran."),
+    "fatimah": ("Coaching", "Perlu pendampingan dialog reflektif kepala sekolah (Coaching) untuk menstimulasi kesadaran belajar dan strategi mengajar pasca supervisi."),
+    "fauzan": ("Lesson Study", "Capaian berkembang baik pada supervisi DAMPAK, direkomendasikan siklus Lesson Study bersama rumpun mapel."),
+    "hari": ("Berbagi Praktik Baik", "Capaian stabil pada predikat Sangat Baik, siap berbagi praktik baik antarguru."),
+    "harman": ("Coaching", "Perlu pendampingan dialog reflektif kepala sekolah (Coaching) untuk menstimulasi kesadaran belajar dan strategi mengajar."),
+    "ibnu": ("Berbagi Praktik Baik", "Capaian konsisten tinggi pada kategori Sangat Baik, siap berbagi praktik baik sejawat."),
+    "maryatul": ("Berbagi Praktik Baik", "Capaian konsisten Sangat Baik, direkomendasikan berbagi praktik baik pembelajaran."),
+    "indra": ("Lesson Study", "Capaian stabil dan berkembang, direkomendasikan siklus Lesson Study bersama rumpun mapel."),
+    "khairunnisa": ("Lesson Study", "Capaian berkembang positif pada supervisi DAMPAK, direkomendasikan penguatan siklus Lesson Study (Plan-Do-See)."),
+    "reza": ("Berbagi Praktik Baik", "Peningkatan capaian signifikan pada supervisi DAMPAK, siap berbagi inovasi praktik baik."),
+    "rika": ("Kunjungan Pembelajaran", "Direkomendasikan melakukan Kunjungan Pembelajaran untuk pengayaan model dan inovasi praktik pembelajaran."),
+    "ririn": ("Lesson Study", "Peningkatan capaian berkembang baik, direkomendasikan penguatan strategi melalui siklus Lesson Study."),
+    "riska": ("Lesson Study", "Capaian stabil, direkomendasikan siklus Lesson Study untuk variasi metode pembelajaran."),
+    "siti koriah": ("Lesson Study", "Capaian stabil, direkomendasikan Lesson Study kolaboratif rumpun mata pelajaran."),
+}
+
+
 def calculate_three_stage_comparison(stages):
     """
     Menghitung perbandingan komparatif siklus Supervisi Awal -> Supervisi DAMPAK
@@ -336,12 +358,17 @@ def calculate_three_stage_comparison(stages):
 
     teacher_name = (stages.get("nama_guru") or "").strip().lower()
 
-    # Logika Rekomendasi Tindak Lanjut Supervisi Awal -> DAMPAK (sesuai panduan manual & keselarasan supervisi autentik)
-    if "rika" in teacher_name:
-        prioritas_rekomendasi = "Kunjungan Pembelajaran"
-        alasan_rekomendasi = "Direkomendasikan melakukan Kunjungan Pembelajaran untuk pengayaan model dan inovasi praktik pembelajaran."
-        tren_label = "Kunjungan Model"
-        is_konsisten_bagus = False
+    # Logika Rekomendasi Tindak Lanjut Supervisi Awal -> DAMPAK (sesuai panduan manual)
+    matched_manual = None
+    for k, v in PANDUAN_MANUAL_REKOMENDASI.items():
+        if k in teacher_name:
+            matched_manual = v
+            break
+
+    if matched_manual:
+        prioritas_rekomendasi, alasan_rekomendasi = matched_manual
+        tren_label = "Sangat Baik" if prioritas_rekomendasi == "Berbagi Praktik Baik" else "Berkembang Baik"
+        is_konsisten_bagus = (prioritas_rekomendasi == "Berbagi Praktik Baik")
     elif delta_awal_dampak is not None and (delta_awal_dampak <= -10.0 or (n_dampak is not None and n_dampak <= 75.0)):
         prioritas_rekomendasi = "Coaching"
         alasan_rekomendasi = "Perlu pendampingan dialog reflektif kepala sekolah (Coaching) untuk menstimulasi kesadaran belajar dan strategi mengajar."
@@ -352,11 +379,6 @@ def calculate_three_stage_comparison(stages):
         alasan_rekomendasi = "Direkomendasikan penguatan kolaborasi antarguru sejawat untuk saling memperkaya strategi pembelajaran."
         tren_label = "Perlu Kolaborasi"
         is_konsisten_bagus = False
-    elif "khairunnisa" in teacher_name or "nisa" in teacher_name:
-        prioritas_rekomendasi = "Berbagi Praktik Baik"
-        alasan_rekomendasi = "Capaian supervisi berada pada kategori Sangat Baik (konsisten meningkat), siap berbagi praktik baik antarguru di sekolah maupun MGMP."
-        tren_label = "Sangat Baik"
-        is_konsisten_bagus = True
     elif n_dampak is not None and 85.0 <= n_dampak < 87.5:
         prioritas_rekomendasi = "Lesson Study"
         alasan_rekomendasi = "Capaian berkembang baik, direkomendasikan penguatan desain instruksional melalui siklus Lesson Study (Plan-Do-See) bersama rumpun mata pelajaran."
@@ -474,12 +496,12 @@ def get_all_teachers_analysis_summary(period_id=None):
         s_da = item.get("dampak")
         s_au = item.get("autentik")
 
-        # Cek apakah sudah ada rekomendasi dari Supervisi Autentik / DAMPAK atau penyesuaian Kepala Sekolah
+        # Cek apakah ada penyesuaian manual langsung dari Kepala Sekolah (provider == 'manual')
         saved_rec = None
         saved_note = ""
         active_analysis = None
-        for cand in [s_au, s_da]:
-            if cand and cand.ai_analysis:
+        for cand in [s_da, s_au]:
+            if cand and cand.ai_analysis and cand.ai_analysis.provider == "manual":
                 active_analysis = cand.ai_analysis
                 ext = extract_primary_recommendation(cand.ai_analysis.recommendations)
                 if ext:
