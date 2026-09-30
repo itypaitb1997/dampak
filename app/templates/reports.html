@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Laporan &amp; Grafik Supervisi — DAMPAK{% endblock %}
+{% block title %}Laporan &amp; Grafik Supervisi — SIMPATIK{% endblock %}
 
 {% block extra_head %}
 <!-- Chart.js CDN -->
@@ -80,13 +80,13 @@
   <div style="display: flex; justify-content: space-between; align-items: center;">
     <div>
       <h2 style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #0f172a;">SMPIT ISTIQAMAH BALIKPAPAN</h2>
-      <p style="margin: 0.25rem 0 0; font-size: 0.95rem; color: #475569;">Laporan Agregat &amp; Grafik Capaian Supervisi Guru Berkelanjutan (DAMPAK)</p>
+      <p style="margin: 0.25rem 0 0; font-size: 0.95rem; color: #475569;">Laporan Agregat &amp; Grafik Capaian Supervisi Guru Berkelanjutan (SIMPATIK)</p>
       <div style="margin-top: 0.4rem; font-size: 0.85rem; color: #64748b;">
         Tahun Ajaran: <strong>{{ active_period.tahun_ajaran if active_period else '2025/2026 - 2026/2027' }}</strong> | Tanggal Cetak: {{ now().strftime('%d %B %Y') if now is defined else 'September 2026' }}
       </div>
     </div>
     <div style="border: 2px solid #2563eb; padding: 0.4rem 0.8rem; border-radius: 6px; text-align: center; font-weight: 800; color: #2563eb;">
-      DAMPAK
+      SIMPATIK
     </div>
   </div>
 </div>
@@ -371,17 +371,6 @@
         {% endfor %}
       </tbody>
     </table>
-  </div>
-</div>
-
-<!-- Legalitas Cetak Kepala Sekolah -->
-<div style="margin-top: 2rem; display: flex; justify-content: flex-end; padding: 1rem 0;">
-  <div style="text-align: center; min-width: 250px;">
-    <div>Balikpapan, {{ now().strftime('%d %B %Y') if now is defined else '17 September 2026' }}</div>
-    <div style="margin-top: 0.25rem; font-weight: 600;">Kepala Sekolah / Supervisor</div>
-    <div style="height: 60px;"></div>
-    <div style="font-weight: 800; text-decoration: underline;">Administrator Sistem, M.Pd.</div>
-    <div style="font-size: 0.85rem; color: #64748b;">NIP. 198501152010011002</div>
   </div>
 </div>
 

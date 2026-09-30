@@ -1,81 +1,159 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard — DAMPAK{% endblock %}
+{% block title %}Dashboard — SIMPATIK{% endblock %}
 
 {% block content %}
-<!-- Welcome & Tahun Ajaran Highlight Banner -->
-<div class="card card-dashed-violet" style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
-  <div>
-    <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #f5f3ff; color: #7c3aed; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; margin-bottom: 0.75rem; border: 1px dashed #c4b5fd; font-weight: 600;">
-      <span>●</span> Sistem Supervisi Guru Berkelanjutan
+<!-- Welcome & Tahun Ajaran Highlight Banner (Animatif & Modern) -->
+<div class="dashboard-hero-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+  <div style="position: relative; z-index: 2;">
+    <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: #ffffff; color: #7c3aed; padding: 0.35rem 0.85rem; border-radius: 9999px; font-size: 0.825rem; margin-bottom: 0.75rem; border: 1.5px dashed #c4b5fd; font-weight: 700; box-shadow: 0 2px 6px rgba(124, 58, 237, 0.08);">
+      <span class="live-pulse-violet"></span> SIMPATIK &bull; Supervisi Berkelanjutan
     </div>
-    <h1 style="font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.4rem; color: #0f172a;">
+    <h1 style="font-size: 2rem; font-weight: 900; letter-spacing: -0.025em; margin-bottom: 0.35rem; color: #0f172a; line-height: 1.2;">
       Dashboard Administrator
     </h1>
-    <p style="color: #64748b; font-size: 0.95rem; max-width: 600px; margin-bottom: 0;">
-      Seluruh data capaian supervisi dikelompokkan berdasarkan <strong>Tahun Ajaran Aktif</strong>.
+    <p style="color: #475569; font-size: 0.95rem; max-width: 620px; margin-bottom: 1.25rem; line-height: 1.55;">
+      Pemantauan terpadu 3 siklus supervisi (<strong>Supervisi Awal</strong> &rarr; <strong>DAMPAK & RTL</strong> &rarr; <strong>Supervisi Autentik</strong>) untuk Tahun Ajaran <strong>{{ stats.tahun_ajaran_aktif }}</strong>.
     </p>
+
+    <!-- Quick Action Shortcut Chips -->
+    <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+      <a href="{{ url_for('main.jadwal_list') }}" class="btn" style="background: #ffffff; color: #4338ca; border: 1.5px dashed #a5b4fc; padding: 0.45rem 0.85rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; text-decoration: none; transition: all 0.2s ease;">
+        📅 Jadwal Supervisi
+      </a>
+      <a href="{{ url_for('main.supervisions') }}" class="btn" style="background: #ffffff; color: #2563eb; border: 1.5px dashed #93c5fd; padding: 0.45rem 0.85rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; text-decoration: none; transition: all 0.2s ease;">
+        📋 Supervisi Awal
+      </a>
+      <a href="{{ url_for('main.rtl_dampak') }}" class="btn" style="background: #ffffff; color: #d97706; border: 1.5px dashed #fcd34d; padding: 0.45rem 0.85rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; text-decoration: none; transition: all 0.2s ease;">
+        🔄 DAMPAK & RTL
+      </a>
+      <a href="{{ url_for('main.supervisi_autentik') }}" class="btn" style="background: #ffffff; color: #059669; border: 1.5px dashed #6ee7b7; padding: 0.45rem 0.85rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; text-decoration: none; transition: all 0.2s ease;">
+        🎯 Autentik
+      </a>
+    </div>
   </div>
 
-  <div style="background: #ffffff; border: 1.5px dashed #8b5cf6; border-radius: var(--radius-md); padding: 1.1rem 1.75rem; text-align: right;">
-    <div style="color: #64748b; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; font-weight: 600;">Tahun Ajaran Aktif</div>
-    <div style="font-size: 1.5rem; font-weight: 800; color: #7c3aed;">
+  <div style="position: relative; z-index: 2; background: #ffffff; border: 2px dashed #8b5cf6; border-radius: var(--radius-lg); padding: 1.25rem 1.85rem; text-align: right; box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.12);">
+    <div style="color: #64748b; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.25rem; font-weight: 700;">
+      Tahun Ajaran Aktif
+    </div>
+    <div style="font-size: 1.65rem; font-weight: 900; color: #7c3aed; letter-spacing: -0.01em;">
       {{ stats.tahun_ajaran_aktif }}
     </div>
-    <div style="display: inline-block; margin-top: 0.35rem;">
-      <span class="role-tag role-GURU" style="font-size: 0.75rem;">AKTIF</span>
+    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
+      <span class="live-pulse-emerald"></span>
+      <span class="role-tag role-GURU" style="font-size: 0.725rem; padding: 0.2rem 0.65rem; font-weight: 800;">AKTIF</span>
+      <span style="font-size: 0.8rem; color: #64748b; font-weight: 600;">{{ stats.total_guru }} Guru</span>
     </div>
   </div>
 </div>
 
-<!-- Key Metrics Grid Dikelompokkan Berdasarkan Tahun Aktif -->
+<!-- Key Metrics Grid Dikelompokkan Berdasarkan Tahun Aktif (Animasi Interaktif) -->
 <div class="stats-grid">
-  <div class="stat-box-modern card-dashed-blue">
+  <div class="stat-box-modern card-dashed-blue" style="cursor: default;">
     <div>
       <span class="stat-label">Tahun Aktif</span>
       <div class="stat-value" style="font-size: 1.4rem; margin-top: 0.25rem; color: #2563eb;">{{ stats.tahun_ajaran_aktif }}</div>
       <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Basis Data Terpilih</div>
+      <div class="dist-bar-container" style="height: 4px; margin-top: 0.5rem; background: #dbeafe;">
+        <div style="width: 100%; background: #2563eb; height: 100%; border-radius: 9999px;"></div>
+      </div>
     </div>
     <div class="stat-icon icon-blue">📅</div>
   </div>
 
-
-  <div class="stat-box-modern card-dashed-emerald">
+  <div class="stat-box-modern card-dashed-emerald" style="cursor: default;">
     <div>
       <span class="stat-label">Rata-Rata Nilai</span>
-      <div class="stat-value" style="margin-top: 0.25rem; color: #059669;">{{ '%.1f'|format(stats.rata_rata_skor) }}</div>
+      <div class="stat-value counter-anim" data-target="{{ '%.1f'|format(stats.rata_rata_skor) }}" data-decimals="1" style="margin-top: 0.25rem; color: #059669;">
+        {{ '%.1f'|format(stats.rata_rata_skor) }}
+      </div>
       <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Skala 0 - 100</div>
+      <div class="dist-bar-container" style="height: 4px; margin-top: 0.5rem; background: #d1fae5;">
+        <div style="width: {{ stats.rata_rata_skor if stats.rata_rata_skor <= 100 else 100 }}%; background: #059669; height: 100%; border-radius: 9999px;"></div>
+      </div>
     </div>
     <div class="stat-icon icon-emerald">⭐</div>
   </div>
 
-  <div class="stat-box-modern card-dashed-amber">
+  <div class="stat-box-modern card-dashed-amber" style="cursor: default;">
     <div>
       <span class="stat-label">Capaian Baik / Sangat Baik</span>
-      <div class="stat-value" style="margin-top: 0.25rem; color: #d97706;">{{ stats.sangat_baik + stats.baik }}</div>
+      <div class="stat-value counter-anim" data-target="{{ stats.sangat_baik + stats.baik }}" data-decimals="0" style="margin-top: 0.25rem; color: #d97706;">
+        {{ stats.sangat_baik + stats.baik }}
+      </div>
       <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">{{ stats.sangat_baik }} Sangat Baik / {{ stats.baik }} Baik</div>
+      <div class="dist-bar-container" style="height: 4px; margin-top: 0.5rem; background: #fef3c7;">
+        <div style="width: {% if stats.total_supervisi > 0 %}{{ ((stats.sangat_baik + stats.baik) / stats.total_supervisi * 100)|round }}{% else %}0{% endif %}%; background: #d97706; height: 100%; border-radius: 9999px;"></div>
+      </div>
     </div>
     <div class="stat-icon icon-amber">📈</div>
   </div>
 
-  <div class="stat-box-modern card-dashed-purple">
+  <div class="stat-box-modern card-dashed-purple" style="cursor: default;">
     <div>
       <span class="stat-label">Capaian Cukup / Kurang</span>
-      <div class="stat-value" style="margin-top: 0.25rem; color: #9333ea;">{{ stats.cukup + stats.kurang }}</div>
+      <div class="stat-value counter-anim" data-target="{{ stats.cukup + stats.kurang }}" data-decimals="0" style="margin-top: 0.25rem; color: #9333ea;">
+        {{ stats.cukup + stats.kurang }}
+      </div>
       <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Perlu Pendampingan RTL</div>
+      <div class="dist-bar-container" style="height: 4px; margin-top: 0.5rem; background: #f3e8ff;">
+        <div style="width: {% if stats.total_supervisi > 0 %}{{ ((stats.cukup + stats.kurang) / stats.total_supervisi * 100)|round }}{% else %}0{% endif %}%; background: #9333ea; height: 100%; border-radius: 9999px;"></div>
+      </div>
     </div>
     <div class="stat-icon icon-purple">🎯</div>
   </div>
 
-  <div class="stat-box-modern card-dashed-rose">
+  <div class="stat-box-modern card-dashed-rose" style="cursor: default;">
     <div>
       <span class="stat-label">Total Observasi Selesai</span>
-      <div class="stat-value" style="margin-top: 0.25rem; color: #e11d48;">{{ stats.selesai }}</div>
+      <div class="stat-value counter-anim" data-target="{{ stats.selesai }}" data-decimals="0" style="margin-top: 0.25rem; color: #e11d48;">
+        {{ stats.selesai }}
+      </div>
       <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Tercatat Lengkap</div>
+      <div class="dist-bar-container" style="height: 4px; margin-top: 0.5rem; background: #ffe4e6;">
+        <div style="width: {% if stats.total_supervisi > 0 %}{{ (stats.selesai / stats.total_supervisi * 100)|round }}{% else %}0{% endif %}%; background: #e11d48; height: 100%; border-radius: 9999px;"></div>
+      </div>
     </div>
     <div class="stat-icon icon-rose">📊</div>
   </div>
 </div>
+
+<!-- Visual Distribusi Predikat Capaian -->
+{% if stats.total_supervisi > 0 %}
+<div class="card card-dashed-violet" style="margin-bottom: 2rem; padding: 1.25rem 1.75rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.5rem;">
+    <div style="font-weight: 700; font-size: 0.95rem; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
+      <span>📊</span> Distribusi Capaian Predikat Supervisi
+    </div>
+    <div style="display: flex; gap: 0.75rem; font-size: 0.8rem; flex-wrap: wrap;">
+      <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #059669; font-weight: 700;">
+        <span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981;"></span> Sangat Baik: {{ stats.sangat_baik }}
+      </span>
+      <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #2563eb; font-weight: 700;">
+        <span style="width: 10px; height: 10px; border-radius: 50%; background: #3b82f6;"></span> Baik: {{ stats.baik }}
+      </span>
+      <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #d97706; font-weight: 700;">
+        <span style="width: 10px; height: 10px; border-radius: 50%; background: #f59e0b;"></span> Cukup: {{ stats.cukup }}
+      </span>
+      <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #e11d48; font-weight: 700;">
+        <span style="width: 10px; height: 10px; border-radius: 50%; background: #f43f5e;"></span> Kurang: {{ stats.kurang }}
+      </span>
+    </div>
+  </div>
+
+  <div class="dist-bar-container" style="height: 12px; margin: 0.5rem 0 0;">
+    {% set p_sb = (stats.sangat_baik / stats.total_supervisi * 100)|round(1) %}
+    {% set p_b = (stats.baik / stats.total_supervisi * 100)|round(1) %}
+    {% set p_c = (stats.cukup / stats.total_supervisi * 100)|round(1) %}
+    {% set p_k = (stats.kurang / stats.total_supervisi * 100)|round(1) %}
+    <div class="dist-bar-seg" style="width: {{ p_sb }}%; background: #10b981;" title="Sangat Baik: {{ p_sb }}%"></div>
+    <div class="dist-bar-seg" style="width: {{ p_b }}%; background: #3b82f6;" title="Baik: {{ p_b }}%"></div>
+    <div class="dist-bar-seg" style="width: {{ p_c }}%; background: #f59e0b;" title="Cukup: {{ p_c }}%"></div>
+    <div class="dist-bar-seg" style="width: {{ p_k }}%; background: #f43f5e;" title="Kurang: {{ p_k }}%"></div>
+  </div>
+</div>
+{% endif %}
 
 <!-- Section: Pengaturan Tahun Ajaran & Ringkasan Hasil Guru -->
 <div class="grid-2" style="margin-bottom: 2rem;">
@@ -157,59 +235,62 @@
 
   <!-- Right: Pintasan Alur Supervisi -->
   <div class="card card-dashed-rose" style="margin-bottom: 0;">
-    <h2 class="card-title" style="margin-bottom: 0.25rem;">Alur Siklus Supervisi</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+      <h2 class="card-title" style="margin: 0;">Alur Siklus Supervisi</h2>
+      <span class="badge" style="background: #ffe4e6; color: #e11d48; font-weight: 800; font-size: 0.75rem;">5 TAHAPAN</span>
+    </div>
     <p class="card-subtitle" style="margin-bottom: 1.25rem;">Akses terpadu ke setiap tahapan supervisi untuk Tahun {{ stats.tahun_ajaran_aktif }}.</p>
 
     <div class="pipeline-card">
-      <a href="{{ url_for('main.supervisions') }}" class="pipeline-item" style="background-color: #ffffff; border: 1.5px dashed #6366f1;">
-        <div class="pipeline-icon">📋</div>
+      <a href="{{ url_for('main.supervisions') }}" class="pipeline-item" style="border: 1.5px dashed #6366f1;">
+        <div class="pipeline-icon" style="background: #eef2ff; color: #4f46e5; border-color: #c7d2fe;">1</div>
         <div style="flex: 1;">
-          <div style="font-weight: 700; font-size: 0.95rem;">Supervisi Awal</div>
+          <div style="font-weight: 800; font-size: 0.95rem; color: #1e1b4b;">Supervisi Awal</div>
           <div style="font-size: 0.825rem; color: var(--text-muted);">Rekap hasil observasi pembelajaran & nilai 0–100</div>
         </div>
-        <span style="font-weight: 800; font-size: 1.1rem; color: #4f46e5;">{{ stats.total_supervisi }}</span>
+        <span style="font-weight: 900; font-size: 1.15rem; color: #4f46e5;">{{ stats.total_supervisi }}</span>
       </a>
 
-      <a href="{{ url_for('main.rtl_dampak') }}" class="pipeline-item" style="background-color: #ffffff; border: 1.5px dashed #f59e0b;">
-        <div class="pipeline-icon">🔄</div>
+      <a href="{{ url_for('main.rtl_dampak') }}" class="pipeline-item" style="border: 1.5px dashed #f59e0b;">
+        <div class="pipeline-icon" style="background: #fffbeb; color: #d97706; border-color: #fde68a;">2</div>
         <div style="flex: 1;">
-          <div style="font-weight: 700; font-size: 0.95rem;">Supervisi DAMPAK</div>
+          <div style="font-weight: 800; font-size: 0.95rem; color: #451a03;">Supervisi DAMPAK</div>
           <div style="font-size: 0.825rem; color: var(--text-muted);">Rencana tindak lanjut & pendampingan terarah</div>
         </div>
-        <span style="font-weight: 800; font-size: 1.1rem; color: #d97706;">RTL</span>
+        <span style="font-weight: 900; font-size: 1rem; color: #d97706; background: #fef3c7; padding: 0.2rem 0.6rem; border-radius: 6px;">RTL</span>
       </a>
 
-      <a href="{{ url_for('main.supervisi_autentik') }}" class="pipeline-item" style="background-color: #ffffff; border: 1.5px dashed #10b981;">
-        <div class="pipeline-icon">🎯</div>
+      <a href="{{ url_for('main.supervisi_autentik') }}" class="pipeline-item" style="border: 1.5px dashed #10b981;">
+        <div class="pipeline-icon" style="background: #ecfdf5; color: #059669; border-color: #a7f3d0;">3</div>
         <div style="flex: 1;">
-          <div style="font-weight: 700; font-size: 0.95rem;">Supervisi Autentik</div>
+          <div style="font-weight: 800; font-size: 0.95rem; color: #064e3b;">Supervisi Autentik</div>
           <div style="font-size: 0.825rem; color: var(--text-muted);">Observasi autentik pasca-pendampingan</div>
         </div>
-        <span style="font-weight: 800; font-size: 1.1rem; color: #059669;">Autentik</span>
+        <span style="font-weight: 900; font-size: 0.95rem; color: #059669; background: #d1fae5; padding: 0.2rem 0.6rem; border-radius: 6px;">Autentik</span>
       </a>
 
-      <a href="{{ url_for('main.analysis') }}" class="pipeline-item" style="background-color: #ffffff; border: 1.5px dashed #a855f7;">
-        <div class="pipeline-icon">🤖</div>
+      <a href="{{ url_for('main.analysis') }}" class="pipeline-item" style="border: 1.5px dashed #a855f7;">
+        <div class="pipeline-icon" style="background: #faf5ff; color: #9333ea; border-color: #e9d5ff;">4</div>
         <div style="flex: 1;">
-          <div style="font-weight: 700; font-size: 0.95rem;">Analisa</div>
+          <div style="font-weight: 800; font-size: 0.95rem; color: #3b0764;">Analisa</div>
           <div style="font-size: 0.825rem; color: var(--text-muted);">Analisis komparatif skor dan rekomendasi</div>
         </div>
-        <span style="font-weight: 800; font-size: 1.1rem; color: #9333ea;">AI</span>
+        <span style="font-weight: 900; font-size: 0.95rem; color: #9333ea; background: #f3e8ff; padding: 0.2rem 0.6rem; border-radius: 6px;">AI</span>
       </a>
 
-      <a href="{{ url_for('main.reports') }}" class="pipeline-item" style="background-color: #ffffff; border: 1.5px dashed #f43f5e;">
-        <div class="pipeline-icon">📊</div>
+      <a href="{{ url_for('main.reports') }}" class="pipeline-item" style="border: 1.5px dashed #f43f5e;">
+        <div class="pipeline-icon" style="background: #fff1f2; color: #e11d48; border-color: #fecdd3;">5</div>
         <div style="flex: 1;">
-          <div style="font-weight: 700; font-size: 0.95rem;">Laporan</div>
+          <div style="font-weight: 800; font-size: 0.95rem; color: #4c0519;">Laporan</div>
           <div style="font-size: 0.825rem; color: var(--text-muted);">Laporan hasil supervisi dan cetak rekap</div>
         </div>
-        <span style="font-weight: 800; font-size: 1.1rem; color: #e11d48;">Cetak</span>
+        <span style="font-weight: 900; font-size: 0.95rem; color: #e11d48; background: #ffe4e6; padding: 0.2rem 0.6rem; border-radius: 6px;">Cetak</span>
       </a>
     </div>
 
-    <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed #fecdd3; font-size: 0.825rem; color: var(--text-muted); display: flex; justify-content: space-between;">
-      <span>👤 Login: <strong>{{ current_user.full_name }}</strong></span>
-      <span>💾 Tahun Aktif: <strong>{{ stats.tahun_ajaran_aktif }}</strong></span>
+    <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed #fecdd3; font-size: 0.825rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+      <span>👤 Observer: <strong>{{ current_user.full_name }}</strong></span>
+      <span>💾 Basis: <strong>{{ stats.tahun_ajaran_aktif }}</strong></span>
     </div>
   </div>
 </div>
@@ -221,9 +302,22 @@
       <h2 class="card-title" style="margin-bottom: 0.25rem;">Ringkasan Capaian Guru (Tahun {{ stats.tahun_ajaran_aktif }})</h2>
       <p class="card-subtitle" style="margin-bottom: 0;">Data hasil observasi guru yang tercatat pada tahun ajaran yang aktif.</p>
     </div>
-    <a href="{{ url_for('main.supervisions') }}" class="btn btn-primary" style="font-size: 0.85rem;">
-      Buka Modul Supervisi Awal →
-    </a>
+    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+      <!-- Live Search Box Guru -->
+      <div style="position: relative;">
+        <input 
+          type="text" 
+          id="searchGuruTable" 
+          placeholder="🔍 Cari guru / NIGK..." 
+          class="form-control" 
+          style="padding: 0.45rem 0.85rem; font-size: 0.85rem; border-radius: 9999px; width: 220px;"
+          onkeyup="filterGuruTable(this.value)"
+        >
+      </div>
+      <a href="{{ url_for('main.supervisions') }}" class="btn btn-primary" style="font-size: 0.85rem;">
+        Buka Modul Supervisi Awal →
+      </a>
+    </div>
   </div>
 
   <div class="table-responsive">
@@ -244,7 +338,7 @@
         {% for sup in supervisions %}
         {% set cur_no_wa = (sup.guru.no_wa if sup.guru and sup.guru.no_wa else sup.no_wa) or '' %}
         {% set sup_guru_id = sup.guru_id or 0 %}
-        <tr>
+        <tr class="guru-row" data-search="{{ sup.nama_guru }} {{ sup.nigk or '' }}">
           <td>{{ loop.index }}</td>
           <td>
             <span style="font-family: monospace; font-weight: 700; font-size: 0.85rem; color: #1e293b; background: #f1f5f9; padding: 0.2rem 0.5rem; border-radius: 4px;">
@@ -356,7 +450,13 @@
             </div>
           </td>
         </tr>
-        {% else %}
+        {% endfor %}
+        <tr id="searchEmptyRow" style="display: none;">
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+            🔍 Tidak ditemukan data guru yang cocok dengan kata kunci pencarian.
+          </td>
+        </tr>
+        {% if not supervisions %}
         <tr>
           <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem;">
             <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
@@ -366,7 +466,7 @@
             </p>
           </td>
         </tr>
-        {% endfor %}
+        {% endif %}
       </tbody>
     </table>
   </div>
@@ -580,6 +680,55 @@
       event.preventDefault();
       alert('Nomor WhatsApp guru belum diatur. Silakan klik tombol pensil (✏️) untuk memasukkan nomor WhatsApp terlebih dahulu.');
       startEditWa(supId);
+    }
+  }
+
+  /* === ANIMASI ANGKA STATISTIK (COUNT-UP) === */
+  document.addEventListener('DOMContentLoaded', function() {
+    const counters = document.querySelectorAll('.counter-anim');
+    counters.forEach(counter => {
+      const target = parseFloat(counter.getAttribute('data-target')) || 0;
+      const decimals = parseInt(counter.getAttribute('data-decimals')) || 0;
+      const duration = 800; // ms
+      const startTime = performance.now();
+
+      function updateCounter(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Easing out cubic
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        const currentVal = easeOut * target;
+        counter.textContent = decimals > 0 ? currentVal.toFixed(decimals) : Math.round(currentVal);
+
+        if (progress < 1) {
+          requestAnimationFrame(updateCounter);
+        } else {
+          counter.textContent = decimals > 0 ? target.toFixed(decimals) : target;
+        }
+      }
+      requestAnimationFrame(updateCounter);
+    });
+  });
+
+  /* === LIVE SEARCH FILTER GURU === */
+  function filterGuruTable(query) {
+    const q = (query || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('.guru-row');
+    let matchCount = 0;
+
+    rows.forEach(row => {
+      const searchData = (row.getAttribute('data-search') || '').toLowerCase();
+      if (!q || searchData.includes(q)) {
+        row.style.display = '';
+        matchCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    const emptyRow = document.getElementById('searchEmptyRow');
+    if (emptyRow) {
+      emptyRow.style.display = (matchCount === 0 && rows.length > 0) ? '' : 'none';
     }
   }
 </script>

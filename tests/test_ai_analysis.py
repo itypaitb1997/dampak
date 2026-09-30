@@ -518,10 +518,12 @@ def test_reports_and_format_dokumen_print(auth_client, app):
     assert b"G. Kesimpulan Dampak" in res_doc.data
     assert b"H. Posisi Data Perorangan" in res_doc.data
     assert b"window.print()" in res_doc.data
+    assert b"chartPengalamanBelajarMurid" in res_doc.data
 
     # 3. Alias route /reports/cetak
     res_cetak = auth_client.get("/reports/cetak")
     assert res_cetak.status_code == 200
     assert b"DATA AGREGAT HASIL SUPERVISI DAMPAK" in res_cetak.data
+    assert b"chartPengalamanBelajarMurid" in res_cetak.data
 
 

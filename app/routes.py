@@ -1,12 +1,13 @@
 import re
 from urllib.parse import quote
-from datetime import datetime
-from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify
+from datetime import datetime, date
+import os
+from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify, current_app, send_from_directory
 from flask_login import login_required, current_user
 from app.extensions import db
 from app.models import (
     User, Period, Supervision, AIAnalysis, Guru,
-    RekapObservasi, RekapIndikator, RekapNilaiItem
+    RekapObservasi, RekapIndikator, RekapNilaiItem, JadwalSupervisi
 )
 from app.auth import role_required
 from app.excel_importer import import_rekap_observasi
@@ -19,6 +20,16 @@ from app.ai_service import (
 )
 
 main_bp = Blueprint("main", __name__)
+
+
+@main_bp.route("/templates/logo.png")
+@main_bp.route("/logo.png")
+def serve_logo_direct():
+    """Melayani logo.png baik dari static/img/logo.png maupun app/templates/logo.png."""
+    static_img = os.path.join(current_app.root_path, "static", "img")
+    if os.path.exists(os.path.join(static_img, "logo.png")):
+        return send_from_directory(static_img, "logo.png")
+    return send_from_directory(os.path.join(current_app.root_path, "templates"), "logo.png")
 
 
 def format_wa_number(no_wa):
@@ -1159,5 +1170,240 @@ def set_active_period(period_id):
     db.session.commit()
     flash(f"Periode {period.tahun_ajaran} ({period.semester}) berhasil diaktifkan.", "success")
     return redirect(url_for("main.dashboard"))
+
+
+# =========================================================================
+# MODUL PENGATURAN JADWAL SUPERVISI GURU
+# =========================================================================
+
+@main_bp.route("/jadwal", methods=["GET"])
+@login_required
+def jadwal_list():
+    """
+    Menampilkan daftar jadwal pelaksanaan supervisi guru, kalender/tabel kegiatan,
+    dan statistik keterlaksanaan jadwal.
+    """
+    active_period = Period.query.filter_by(status="AKTIF").first()
+    selected_period_id = request.args.get("period_id", type=int)
+    tahap_filter = request.args.get("tahap", "").strip().upper()
+    status_filter = request.args.get("status", "").strip()
+
+    # Query jadwal
+    query = JadwalSupervisi.query
+
+    if selected_period_id:
+        query = query.filter_by(period_id=selected_period_id)
+    elif active_period:
+        query = query.filter_by(period_id=active_period.id)
+
+    if tahap_filter in ["AWAL", "DAMPAK", "AUTENTIK"]:
+        query = query.filter_by(tahap=tahap_filter)
+
+    if status_filter in ["Terjadwal", "Selesai", "Dibatalkan"]:
+        query = query.filter_by(status=status_filter)
+
+    # Urutkan berdasarkan tanggal supervisi terdekat lalu jam
+    jadwals = query.order_by(JadwalSupervisi.tanggal_supervisi.asc(), JadwalSupervisi.jam_mulai.asc()).all()
+
+    # Statistik jadwal
+    today = date.today()
+    all_jadwals_period = JadwalSupervisi.query.filter_by(period_id=active_period.id).all() if active_period else []
+    total_jadwal = len(all_jadwals_period)
+    total_terjadwal = sum(1 for j in all_jadwals_period if j.status == "Terjadwal")
+    total_selesai = sum(1 for j in all_jadwals_period if j.status == "Selesai")
+    total_dibatalkan = sum(1 for j in all_jadwals_period if j.status == "Dibatalkan")
+    jadwal_hari_ini = [j for j in all_jadwals_period if j.tanggal_supervisi == today]
+    jadwal_mendatang = [j for j in all_jadwals_period if j.tanggal_supervisi >= today and j.status == "Terjadwal"]
+
+    # Data pendukung dropdown
+    gurus = Guru.query.order_by(Guru.nama_lengkap.asc()).all()
+    periods = Period.query.order_by(Period.id.desc()).all()
+
+    return render_template(
+        "jadwal.html",
+        active_page="jadwal",
+        active_period=active_period,
+        jadwals=jadwals,
+        gurus=gurus,
+        periods=periods,
+        selected_period_id=selected_period_id or (active_period.id if active_period else None),
+        tahap_filter=tahap_filter,
+        status_filter=status_filter,
+        total_jadwal=total_jadwal,
+        total_terjadwal=total_terjadwal,
+        total_selesai=total_selesai,
+        total_dibatalkan=total_dibatalkan,
+        jadwal_hari_ini_count=len(jadwal_hari_ini),
+        jadwal_mendatang_count=len(jadwal_mendatang),
+        today=today,
+    )
+
+
+@main_bp.route("/jadwal/tambah", methods=["POST"])
+@login_required
+@role_required("ADMIN", "SUPERVISOR")
+def tambah_jadwal():
+    """Menambahkan jadwal supervisi baru untuk guru."""
+    active_period = Period.query.filter_by(status="AKTIF").first()
+    guru_id = request.form.get("guru_id", type=int)
+    nama_guru = request.form.get("nama_guru", "").strip()
+    mata_pelajaran = request.form.get("mata_pelajaran", "").strip()
+    kelas = request.form.get("kelas", "").strip()
+    nama_supervisor = request.form.get("nama_supervisor", "").strip()
+    tanggal_str = request.form.get("tanggal_supervisi", "").strip()
+    jam_mulai = request.form.get("jam_mulai", "").strip()
+    jam_selesai = request.form.get("jam_selesai", "").strip()
+    tahap = request.form.get("tahap", "AWAL").strip().upper()
+    ruangan = request.form.get("ruangan", "").strip()
+    topik_materi = request.form.get("topik_materi", "").strip()
+    catatan = request.form.get("catatan", "").strip()
+    period_id = request.form.get("period_id", type=int) or (active_period.id if active_period else None)
+
+    # Sinkronisasi data dari guru jika guru_id dipilih
+    if guru_id:
+        guru = db.session.get(Guru, guru_id)
+        if guru:
+            if not nama_guru:
+                nama_guru = guru.nama_lengkap
+            if not mata_pelajaran:
+                mata_pelajaran = guru.mata_pelajaran or ""
+            if not kelas:
+                kelas = guru.kelas_fase or ""
+
+    if not nama_guru:
+        flash("Nama guru wajib diisi atau dipilih dari daftar guru.", "danger")
+        return redirect(url_for("main.jadwal_list"))
+
+    if not tanggal_str:
+        flash("Tanggal supervisi wajib diisi.", "danger")
+        return redirect(url_for("main.jadwal_list"))
+
+    try:
+        tanggal_supervisi = datetime.strptime(tanggal_str, "%Y-%m-%d").date()
+    except ValueError:
+        flash("Format tanggal supervisi tidak valid (gunakan YYYY-MM-DD).", "danger")
+        return redirect(url_for("main.jadwal_list"))
+
+    if tahap not in ["AWAL", "DAMPAK", "AUTENTIK"]:
+        tahap = "AWAL"
+
+    jadwal = JadwalSupervisi(
+        guru_id=guru_id,
+        period_id=period_id,
+        nama_guru=nama_guru,
+        mata_pelajaran=mata_pelajaran,
+        kelas=kelas,
+        nama_supervisor=nama_supervisor,
+        tanggal_supervisi=tanggal_supervisi,
+        jam_mulai=jam_mulai,
+        jam_selesai=jam_selesai,
+        tahap=tahap,
+        ruangan=ruangan,
+        topik_materi=topik_materi,
+        catatan=catatan,
+        status="Terjadwal",
+    )
+    db.session.add(jadwal)
+    db.session.commit()
+
+    flash(f"Jadwal supervisi untuk {nama_guru} ({tahap}) berhasil ditambahkan.", "success")
+    return redirect(url_for("main.jadwal_list"))
+
+
+@main_bp.route("/jadwal/<int:jadwal_id>/edit", methods=["POST"])
+@login_required
+@role_required("ADMIN", "SUPERVISOR")
+def edit_jadwal(jadwal_id):
+    """Mengubah data rincian jadwal supervisi."""
+    jadwal = db.session.get(JadwalSupervisi, jadwal_id)
+    if not jadwal:
+        flash("Data jadwal supervisi tidak ditemukan.", "danger")
+        return redirect(url_for("main.jadwal_list"))
+
+    nama_guru = request.form.get("nama_guru", "").strip()
+    mata_pelajaran = request.form.get("mata_pelajaran", "").strip()
+    kelas = request.form.get("kelas", "").strip()
+    nama_supervisor = request.form.get("nama_supervisor", "").strip()
+    tanggal_str = request.form.get("tanggal_supervisi", "").strip()
+    jam_mulai = request.form.get("jam_mulai", "").strip()
+    jam_selesai = request.form.get("jam_selesai", "").strip()
+    tahap = request.form.get("tahap", "").strip().upper()
+    ruangan = request.form.get("ruangan", "").strip()
+    topik_materi = request.form.get("topik_materi", "").strip()
+    catatan = request.form.get("catatan", "").strip()
+    status = request.form.get("status", "").strip()
+
+    if nama_guru:
+        jadwal.nama_guru = nama_guru
+    if mata_pelajaran:
+        jadwal.mata_pelajaran = mata_pelajaran
+    if kelas:
+        jadwal.kelas = kelas
+    jadwal.nama_supervisor = nama_supervisor
+    if jam_mulai is not None:
+        jadwal.jam_mulai = jam_mulai
+    if jam_selesai is not None:
+        jadwal.jam_selesai = jam_selesai
+    if ruangan is not None:
+        jadwal.ruangan = ruangan
+    if topik_materi is not None:
+        jadwal.topik_materi = topik_materi
+    if catatan is not None:
+        jadwal.catatan = catatan
+
+    if tanggal_str:
+        try:
+            jadwal.tanggal_supervisi = datetime.strptime(tanggal_str, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+
+    if tahap in ["AWAL", "DAMPAK", "AUTENTIK"]:
+        jadwal.tahap = tahap
+
+    if status in ["Terjadwal", "Selesai", "Dibatalkan"]:
+        jadwal.status = status
+
+    db.session.commit()
+    flash(f"Jadwal supervisi {jadwal.nama_guru} berhasil diperbarui.", "success")
+    return redirect(url_for("main.jadwal_list"))
+
+
+@main_bp.route("/jadwal/<int:jadwal_id>/status", methods=["POST"])
+@login_required
+@role_required("ADMIN", "SUPERVISOR")
+def update_status_jadwal(jadwal_id):
+    """Memperbarui status jadwal supervisi secara cepat."""
+    jadwal = db.session.get(JadwalSupervisi, jadwal_id)
+    if not jadwal:
+        flash("Data jadwal supervisi tidak ditemukan.", "danger")
+        return redirect(url_for("main.jadwal_list"))
+
+    status = request.form.get("status", "").strip()
+    if status in ["Terjadwal", "Selesai", "Dibatalkan"]:
+        jadwal.status = status
+        db.session.commit()
+        flash(f"Status jadwal {jadwal.nama_guru} diubah menjadi '{status}'.", "success")
+    else:
+        flash("Status jadwal tidak valid.", "warning")
+
+    return redirect(url_for("main.jadwal_list"))
+
+
+@main_bp.route("/jadwal/<int:jadwal_id>/hapus", methods=["POST"])
+@login_required
+@role_required("ADMIN", "SUPERVISOR")
+def hapus_jadwal(jadwal_id):
+    """Menghapus data jadwal supervisi."""
+    jadwal = db.session.get(JadwalSupervisi, jadwal_id)
+    if not jadwal:
+        flash("Data jadwal supervisi tidak ditemukan.", "danger")
+        return redirect(url_for("main.jadwal_list"))
+
+    nama = jadwal.nama_guru
+    db.session.delete(jadwal)
+    db.session.commit()
+    flash(f"Jadwal supervisi untuk {nama} berhasil dihapus.", "success")
+    return redirect(url_for("main.jadwal_list"))
+
 
 

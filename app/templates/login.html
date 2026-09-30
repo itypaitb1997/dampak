@@ -1,15 +1,247 @@
 {% extends "base.html" %}
 
-{% block title %}Masuk — DAMPAK{% endblock %}
+{% block title %}Masuk — SIMPATIK{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Aesthetic Login Background & Glassmorphic Card */
+  body {
+    background: 
+      radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.20) 0%, transparent 40%),
+      radial-gradient(circle at 90% 15%, rgba(14, 165, 233, 0.20) 0%, transparent 35%),
+      radial-gradient(circle at 50% 60%, rgba(168, 85, 247, 0.16) 0%, transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(244, 114, 182, 0.16) 0%, transparent 40%),
+      radial-gradient(circle at 15% 85%, rgba(59, 130, 246, 0.18) 0%, transparent 40%),
+      linear-gradient(135deg, #f8fafc 0%, #eef2ff 40%, #f5f3ff 75%, #fdf2f8 100%) !important;
+    background-attachment: fixed !important;
+    min-height: 100vh;
+  }
+
+  .navbar-public {
+    background: rgba(255, 255, 255, 0.65) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+  }
+
+  .auth-wrapper {
+    max-width: 440px;
+    margin: 2.5rem auto 4rem;
+    padding: 0 1rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  .auth-card {
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.9) !important;
+    border-radius: 24px !important;
+    padding: 2.25rem 2rem 2.5rem !important;
+    box-shadow: 
+      0 20px 45px -10px rgba(30, 41, 59, 0.12),
+      0 0 0 1px rgba(226, 232, 240, 0.8),
+      0 8px 25px rgba(99, 102, 241, 0.08) !important;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  .auth-card:hover {
+    box-shadow: 
+      0 25px 55px -10px rgba(30, 41, 59, 0.16),
+      0 0 0 1px rgba(226, 232, 240, 0.9),
+      0 12px 30px rgba(99, 102, 241, 0.12) !important;
+  }
+
+  /* Decorative Ambient Glow Orbs behind card */
+  .auth-ambient-glow-1 {
+    position: absolute;
+    top: -40px;
+    left: -35px;
+    width: 170px;
+    height: 170px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.35) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(35px);
+    z-index: 1;
+    pointer-events: none;
+    animation: floatGlow 8s ease-in-out infinite alternate;
+  }
+
+  .auth-ambient-glow-2 {
+    position: absolute;
+    bottom: -35px;
+    right: -35px;
+    width: 190px;
+    height: 190px;
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.32) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(35px);
+    z-index: 1;
+    pointer-events: none;
+    animation: floatGlow 10s ease-in-out infinite alternate-reverse;
+  }
+
+  @keyframes floatGlow {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(20px, -15px) scale(1.08); }
+  }
+
+  .auth-btn-submit {
+    background: linear-gradient(135deg, #2563eb, #4f46e5) !important;
+    border: none !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.02em !important;
+    border-radius: 12px !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .auth-btn-submit:hover {
+    background: linear-gradient(135deg, #1d4ed8, #4338ca) !important;
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45) !important;
+    transform: translateY(-1px);
+  }
+
+  .auth-card .form-control {
+    border-radius: 12px !important;
+    padding: 0.75rem 1rem !important;
+    border: 1.5px solid #e2e8f0 !important;
+    background: #ffffff !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .auth-card .form-control:focus {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15) !important;
+  }
+
+  footer {
+    background: transparent !important;
+    border-top: 1px solid rgba(226, 232, 240, 0.6) !important;
+  }
+
+  /* Overlay Logo Sedang Memproses */
+  .login-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 99999;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    animation: fadeInOverlay 0.25s ease-out forwards;
+  }
+
+  .login-overlay.active {
+    display: flex;
+  }
+
+  @keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .login-overlay-card {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 28px;
+    padding: 2.75rem 2.25rem 2.25rem;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 
+      0 25px 50px -12px rgba(0, 0, 0, 0.35),
+      0 0 35px rgba(99, 102, 241, 0.25);
+    animation: scaleUpCard 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes scaleUpCard {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .login-overlay-logo-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .login-overlay-glow-ring {
+    position: absolute;
+    inset: -15px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.35) 0%, rgba(59, 130, 246, 0.15) 50%, transparent 70%);
+    animation: ringPulse 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes ringPulse {
+    0% { transform: scale(0.95); opacity: 0.6; }
+    100% { transform: scale(1.15); opacity: 1; }
+  }
+
+  .login-overlay-logo {
+    width: 140px;
+    max-width: 100%;
+    height: auto;
+    border-radius: 0;
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.12));
+    animation: logoBreath 2.2s ease-in-out infinite;
+  }
+
+  @keyframes logoBreath {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+
+  .login-overlay-spinner {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto 1.25rem;
+    border: 3.5px solid #e0e7ff;
+    border-top-color: #4f46e5;
+    border-radius: 50%;
+    animation: spinOverlay 0.8s linear infinite;
+  }
+
+  @keyframes spinOverlay {
+    to { transform: rotate(360deg); }
+  }
+
+  .login-overlay-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 0.4rem;
+    letter-spacing: -0.01em;
+  }
+
+  .login-overlay-subtitle {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.5;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="auth-wrapper">
-  <div class="auth-header">
-    <h1>Masuk ke Supervisi DAMPAK</h1>
-    <p>Sistem Supervisi DAMPAK Berbasis Kecerdasan Artificial</p>
-  </div>
+  <!-- Glowing Ambient Accents -->
+  <div class="auth-ambient-glow-1"></div>
+  <div class="auth-ambient-glow-2"></div>
 
-  <div class="card">
+  <div class="card auth-card">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo SIMPATIK" class="auth-logo" style="width: 220px; max-width: 100%; height: auto; border-radius: 0; display: block; margin: 0.5rem auto 1.75rem;">
     <form action="{{ url_for('auth.login', next=request.args.get('next')) }}" method="POST">
       <div class="form-group">
         <label for="username" class="form-label">Username</label>
@@ -37,10 +269,47 @@
         >
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1rem;">
+      <button type="submit" class="btn btn-primary btn-block auth-btn-submit" style="margin-top: 1.5rem;">
         Masuk
       </button>
     </form>
   </div>
 </div>
+
+<!-- OVERLAY LOGO SEDANG MEMPROSES -->
+<div id="loginLoadingOverlay" class="login-overlay" aria-live="assertive" role="alert">
+  <div class="login-overlay-card">
+    <div class="login-overlay-logo-container">
+      <div class="login-overlay-glow-ring"></div>
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo SIMPATIK" class="login-overlay-logo">
+    </div>
+    <div class="login-overlay-spinner"></div>
+    <h3 class="login-overlay-title">Sedang Memproses...</h3>
+    <p class="login-overlay-subtitle">Mohon tunggu, sistem sedang memverifikasi akun Anda.</p>
+  </div>
+</div>
 {% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var form = document.querySelector('form');
+    var overlay = document.getElementById('loginLoadingOverlay');
+    var submitBtn = document.querySelector('.auth-btn-submit');
+
+    if (form && overlay) {
+      form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+          return;
+        }
+        overlay.classList.add('active');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<span>Memproses...</span>';
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}
+

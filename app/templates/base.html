@@ -3,89 +3,159 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}DAMPAK — Supervisi Guru{% endblock %}</title>
+  <title>{% block title %}SIMPATIK — Sistem Informasi Supervisi Dampak dan Autentik{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
 
-  <!-- Navigasi -->
-  <header class="navbar">
-    <a href="{{ url_for('main.dashboard') if current_user.is_authenticated else url_for('auth.login') }}" class="brand">
-      <span class="brand-badge">DAMPAK</span>
-    </a>
+<div class="app-layout">
+  {% if current_user.is_authenticated %}
+    <!-- Backdrop Mobile -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
 
-    {% if current_user.is_authenticated %}
-    <nav>
-      <ul class="nav-menu">
-        <li>
-          <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
-            Dashboard
-          </a>
-        </li>
-        <li>
-          <a href="{{ url_for('main.supervisions') }}" class="nav-link {% if active_page == 'supervisions' %}active{% endif %}">
-            Supervisi Awal
-          </a>
-        </li>
-        <li>
-          <a href="{{ url_for('main.rtl_dampak') }}" class="nav-link {% if active_page == 'rtl_dampak' %}active{% endif %}">
-            Supervisi DAMPAK
-          </a>
-        </li>
-        <li>
-          <a href="{{ url_for('main.supervisi_autentik') }}" class="nav-link {% if active_page == 'supervisi_autentik' %}active{% endif %}">
-            Supervisi Autentik
-          </a>
-        </li>
-        <li>
-          <a href="{{ url_for('main.analysis') }}" class="nav-link {% if active_page == 'analysis' %}active{% endif %}">
-            Analisa
-          </a>
-        </li>
-        <li>
-          <a href="{{ url_for('main.reports') }}" class="nav-link {% if active_page == 'reports' %}active{% endif %}">
-            Laporan
-          </a>
-        </li>
+    <!-- Sidebar Navigasi -->
+    <aside class="app-sidebar" id="appSidebar">
+      <div class="sidebar-header">
+        <a href="{{ url_for('main.dashboard') }}" class="sidebar-brand">
+          <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo SIMPATIK" class="sidebar-logo">
+          <div class="brand-text">
+            <span class="brand-name">SIMPATIK</span>
+            <span class="brand-tagline">Supervisi Guru</span>
+          </div>
+        </a>
+        <button type="button" class="sidebar-close-btn" onclick="toggleSidebar()" aria-label="Tutup Menu">✕</button>
+      </div>
 
-        <li class="user-pill">
-          <span class="user-avatar">A</span>
-          <strong>{{ current_user.full_name }}</strong>
-        </li>
+      <div class="sidebar-nav-container">
+        <div class="sidebar-section-label">MENU SUPERVISI</div>
+        <ul class="sidebar-menu">
+          <li>
+            <a href="{{ url_for('main.dashboard') }}" class="sidebar-link {% if active_page == 'dashboard' %}active{% endif %}">
+              <span class="sidebar-icon">📊</span>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="{{ url_for('main.jadwal_list') }}" class="sidebar-link {% if active_page == 'jadwal' %}active{% endif %}">
+              <span class="sidebar-icon">📅</span>
+              <span>Jadwal Supervisi</span>
+            </a>
+          </li>
+          <li>
+            <a href="{{ url_for('main.supervisions') }}" class="sidebar-link {% if active_page == 'supervisions' %}active{% endif %}">
+              <span class="sidebar-icon">📋</span>
+              <span>Supervisi Awal</span>
+            </a>
+          </li>
+          <li>
+            <a href="{{ url_for('main.rtl_dampak') }}" class="sidebar-link {% if active_page == 'rtl_dampak' %}active{% endif %}">
+              <span class="sidebar-icon">🔄</span>
+              <span>Supervisi DAMPAK</span>
+            </a>
+          </li>
+          <li>
+            <a href="{{ url_for('main.supervisi_autentik') }}" class="sidebar-link {% if active_page == 'supervisi_autentik' %}active{% endif %}">
+              <span class="sidebar-icon">🎯</span>
+              <span>Supervisi Autentik</span>
+            </a>
+          </li>
+          <li>
+            <a href="{{ url_for('main.analysis') }}" class="sidebar-link {% if active_page == 'analysis' %}active{% endif %}">
+              <span class="sidebar-icon">✨</span>
+              <span>Analisa</span>
+            </a>
+          </li>
+          <li>
+            <a href="{{ url_for('main.reports') }}" class="sidebar-link {% if active_page == 'reports' %}active{% endif %}">
+              <span class="sidebar-icon">📈</span>
+              <span>Laporan</span>
+            </a>
+          </li>
+        </ul>
+      </div>
 
-        <li>
-          <form action="{{ url_for('auth.logout') }}" method="POST" style="display:inline;">
-            <button type="submit" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Keluar</button>
-          </form>
-        </li>
-      </ul>
-    </nav>
-    {% endif %}
-  </header>
-
-  <!-- Konten Utama -->
-  <main class="container">
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="flash-container">
-          {% for category, message in messages %}
-            <div class="alert alert-{{ category }}">
-              <span>{{ message }}</span>
-            </div>
-          {% endfor %}
+      <div class="sidebar-footer">
+        <div class="sidebar-user-card">
+          <span class="user-avatar">{{ (current_user.full_name[0] if current_user.full_name else 'A') | upper }}</span>
+          <div class="sidebar-user-info">
+            <strong class="sidebar-user-name" title="{{ current_user.full_name }}">{{ current_user.full_name }}</strong>
+            <span class="sidebar-user-role">{{ current_user.role }}</span>
+          </div>
         </div>
+        <form action="{{ url_for('auth.logout') }}" method="POST" style="margin-top: 0.75rem; width: 100%;">
+          <button type="submit" class="sidebar-logout-btn">
+            <span>🚪 Keluar</span>
+          </button>
+        </form>
+      </div>
+    </aside>
+  {% endif %}
+
+  <!-- Area Konten Utama -->
+  <div class="app-main">
+    <header class="navbar {% if current_user.is_authenticated %}app-topbar{% else %}navbar-public{% endif %}">
+      <div class="topbar-left">
+        {% if current_user.is_authenticated %}
+        <button type="button" class="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="Buka Menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        {% endif %}
+        <a href="{{ url_for('main.dashboard') if current_user.is_authenticated else url_for('auth.login') }}" class="brand {% if current_user.is_authenticated %}topbar-brand{% endif %}">
+          <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo SIMPATIK" class="brand-logo">
+          <span class="brand-name">SIMPATIK</span>
+        </a>
+      </div>
+
+      {% if current_user.is_authenticated %}
+      <div class="topbar-right">
+        {% if active_period %}
+        <div class="topbar-period-badge">
+          <span class="period-dot"></span>
+          <span>T.A. <strong>{{ active_period.tahun_ajaran }}</strong> ({{ active_period.semester }})</span>
+        </div>
+        {% endif %}
+        <div class="user-pill">
+          <span class="user-avatar">{{ (current_user.full_name[0] if current_user.full_name else 'A') | upper }}</span>
+          <strong>{{ current_user.full_name }}</strong>
+        </div>
+      </div>
       {% endif %}
-    {% endwith %}
+    </header>
 
-    {% block content %}{% endblock %}
-  </main>
+    <main class="container">
+      <!-- Flash Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-container">
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
 
-  <!-- Footer -->
-  <footer>
-    <p>&copy; {{ now().year if now is defined else '2026' }} DAMPAK — Sistem Informasi Supervisi Guru Berkelanjutan</p>
-  </footer>
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+      <p>&copy; {{ now().year if now is defined else '2026' }} SIMPATIK — Sistem Informasi Supervisi Dampak dan Autentik</p>
+    </footer>
+  </div>
+</div>
+
+<script>
+  function toggleSidebar() {
+    var sidebar = document.getElementById('appSidebar');
+    var backdrop = document.getElementById('sidebarBackdrop');
+    if (sidebar) sidebar.classList.toggle('open');
+    if (backdrop) backdrop.classList.toggle('open');
+  }
+</script>
 
   {% block extra_scripts %}{% endblock %}
 </body>

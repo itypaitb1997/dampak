@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Format Dokumen Agregat Hasil Supervisi DAMPAK — Cetak Laporan{% endblock %}
+{% block title %}Format Dokumen Agregat Hasil Supervisi — SIMPATIK{% endblock %}
 
 {% block extra_head %}
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   /* Screen Document Container */
   .doc-wrapper {
@@ -256,6 +258,14 @@
       margin-top: 2.5rem !important;
     }
 
+    .doc-chart-wrapper {
+      page-break-inside: avoid !important;
+      margin: 1rem 0 !important;
+      border: 1px solid #94a3b8 !important;
+      padding: 8pt 10pt !important;
+      background: #ffffff !important;
+    }
+
     .page-break {
       page-break-before: always !important;
     }
@@ -387,6 +397,26 @@
       </tbody>
     </table>
 
+    <!-- Grafik Pengalaman Belajar Murid di Bawah Tabel C -->
+    <div class="doc-chart-wrapper" style="margin: 1.25rem 0 1.75rem 0; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 1.25rem 1.5rem; page-break-inside: avoid;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+        <div>
+          <div style="font-size: 0.95rem; font-weight: 700; color: #0f172a;">
+            📊 Grafik Pengalaman Belajar Murid (Skala 1–4)
+          </div>
+          <div style="font-size: 0.8rem; color: #64748b;">
+            Komparasi skor rata-rata dimensi Memahami, Mengaplikasikan, dan Merefleksikan di setiap tahapan supervisi
+          </div>
+        </div>
+        <div style="font-size: 0.75rem; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 0.2rem 0.6rem; font-weight: 600;">
+          Skala Skor: 1.0 s/d 4.0
+        </div>
+      </div>
+      <div style="height: 260px; width: 100%; position: relative;">
+        <canvas id="chartPengalamanBelajarMurid"></canvas>
+      </div>
+    </div>
+
     <!-- Bagian D: Sebaran Guru yang Mengalami Perubahan -->
     <div class="section-header-doc">D. Sebaran Guru yang Mengalami Perubahan</div>
     <!-- <p class="doc-instruction" style="font-style: italic; color: #475569;">
@@ -515,4 +545,146 @@
 
   </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById('chartPengalamanBelajarMurid');
+    if (!canvas) return;
+
+    const tabelC = {{ doc.tabel_c | tojson }};
+    const labels = tabelC.map(item => item.indikator);
+    const dataAwal = tabelC.map(item => parseFloat(item.kondisi_awal) || 0);
+    const dataDampak = tabelC.map(item => parseFloat(item.setelah_dampak) || 0);
+    const dataAutentik = tabelC.map(item => parseFloat(item.supervisi_autentik) || 0);
+
+    // Plugin untuk menampilkan angka skor tepat di atas setiap batang diagram
+    const valueLabelPlugin = {
+      id: 'valueLabelPlugin',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        chart.data.datasets.forEach((dataset, i) => {
+          const meta = chart.getDatasetMeta(i);
+          meta.data.forEach((bar, index) => {
+            const val = dataset.data[index];
+            if (val !== null && val !== undefined && val > 0) {
+              ctx.save();
+              ctx.fillStyle = '#0f172a';
+              ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'bottom';
+              ctx.fillText(Number(val).toFixed(2), bar.x, bar.y - 4);
+              ctx.restore();
+            }
+          });
+        });
+      }
+    };
+
+    new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: '1. Kondisi Awal',
+            data: dataAwal,
+            backgroundColor: '#94a3b8',
+            borderColor: '#64748b',
+            borderWidth: 1.5,
+            borderRadius: 4
+          },
+          {
+            label: '2. Setelah DAMPAK & RTL',
+            data: dataDampak,
+            backgroundColor: '#f59e0b',
+            borderColor: '#d97706',
+            borderWidth: 1.5,
+            borderRadius: 4
+          },
+          {
+            label: '3. Supervisi Autentik',
+            data: dataAutentik,
+            backgroundColor: '#10b981',
+            borderColor: '#059669',
+            borderWidth: 1.5,
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false, // Memastikan grafik langsung ter-render sempurna saat dicetak atau disimpan ke PDF
+        layout: {
+          padding: {
+            top: 22
+          }
+        },
+        scales: {
+          y: {
+            min: 0,
+            max: 4.2,
+            ticks: {
+              stepSize: 1.0,
+              font: {
+                size: 11,
+                weight: '600'
+              },
+              color: '#475569'
+            },
+            title: {
+              display: true,
+              text: 'Skor Rata-Rata (Skala 1.0 - 4.0)',
+              font: {
+                size: 11,
+                weight: '700'
+              },
+              color: '#334155'
+            },
+            grid: {
+              color: '#e2e8f0'
+            }
+          },
+          x: {
+            ticks: {
+              font: {
+                size: 12,
+                weight: '800'
+              },
+              color: '#0f172a'
+            },
+            grid: {
+              display: false
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              boxWidth: 14,
+              boxHeight: 12,
+              padding: 14,
+              font: {
+                size: 12,
+                weight: '700'
+              },
+              color: '#1e293b'
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return ` ${context.dataset.label}: ${context.raw.toFixed(2)} (Skala 1 - 4)`;
+              }
+            }
+          }
+        }
+      },
+      plugins: [valueLabelPlugin]
+    });
+  });
+</script>
 {% endblock %}

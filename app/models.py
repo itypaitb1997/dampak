@@ -49,6 +49,7 @@ class Guru(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     supervisions = db.relationship("Supervision", backref="guru", cascade="all, delete-orphan", lazy="dynamic")
+    jadwal_list = db.relationship("JadwalSupervisi", backref="guru", cascade="all, delete-orphan", lazy="dynamic")
 
     def __repr__(self):
         return f"<Guru {self.nik_nigk} - {self.nama_lengkap}>"
@@ -72,6 +73,7 @@ class Period(db.Model):
 
     supervisions = db.relationship("Supervision", backref="period", cascade="all, delete-orphan", lazy="dynamic")
     rekap_list = db.relationship("RekapObservasi", backref="period", cascade="all, delete-orphan", lazy="dynamic")
+    jadwal_list = db.relationship("JadwalSupervisi", backref="period", cascade="all, delete-orphan", lazy="dynamic")
 
     def __repr__(self):
         return f"<Period {self.tahun_ajaran} ({self.status})>"
@@ -204,3 +206,96 @@ class AIAnalysis(db.Model):
 
     def __repr__(self):
         return f"<AIAnalysis sup={self.supervision_id} status={self.status}>"
+
+
+class JadwalSupervisi(db.Model):
+    """
+    Menyimpan agenda jadwal supervisi guru per periode tahun ajaran.
+    """
+    __tablename__ = "tabel_jadwal_supervisi"
+
+    id = db.Column(db.Integer, primary_key=True)
+    guru_id = db.Column(db.Integer, db.ForeignKey("tabel_guru.id"), nullable=True, index=True)
+    period_id = db.Column(db.Integer, db.ForeignKey("periods.id"), nullable=True, index=True)
+
+    nama_guru = db.Column(db.String(150), nullable=False)
+    mata_pelajaran = db.Column(db.String(150), nullable=True)
+    kelas = db.Column(db.String(50), nullable=True)
+    nama_supervisor = db.Column(db.String(150), nullable=True)
+
+    tanggal_supervisi = db.Column(db.Date, nullable=False, index=True)
+    jam_mulai = db.Column(db.String(10), nullable=True)    # e.g. "08:00"
+    jam_selesai = db.Column(db.String(10), nullable=True)  # e.g. "09:30"
+    tahap = db.Column(db.String(30), default="AWAL", nullable=False)  # AWAL / DAMPAK / AUTENTIK
+    ruangan = db.Column(db.String(100), nullable=True)     # e.g. "Kelas 8A" / "Lab IPA"
+    topik_materi = db.Column(db.String(255), nullable=True)
+    catatan = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default="Terjadwal", nullable=False)  # Terjadwal / Selesai / Dibatalkan
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    @property
+    def formatted_tanggal(self):
+        if not self.tanggal_supervisi:
+            return "-"
+        months = [
+            "", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+            "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+        ]
+        return f"{self.tanggal_supervisi.day} {months[self.tanggal_supervisi.month]} {self.tanggal_supervisi.year}"
+
+    @property
+    def jam_rentang(self):
+        if self.jam_mulai and self.jam_selesai:
+            return f"{self.jam_mulai} - {self.jam_selesai} WITA"
+        elif self.jam_mulai:
+            return f"{self.jam_mulai} WITA"
+        return "Sesuai Jadwal KBM"
+
+    def get_wa_link(self, host_url=None):
+        from urllib.parse import quote
+        import re
+
+        no_wa = None
+        if self.guru and self.guru.no_wa:
+            no_wa = self.guru.no_wa
+
+        if not no_wa:
+            return ""
+
+        clean = re.sub(r"[^\d+]", "", str(no_wa).strip())
+        if clean.startswith("+"):
+            clean = clean[1:]
+        if clean.startswith("0"):
+            clean = "62" + clean[1:]
+
+        if not clean:
+            return ""
+
+        tahap_label = {
+            "AWAL": "Supervisi Awal (Baseline)",
+            "DAMPAK": "Supervisi DAMPAK & RTL",
+            "AUTENTIK": "Supervisi Autentik"
+        }.get(self.tahap, self.tahap)
+
+        pesan = (
+            f"Assalamu'alaikum Warahmatullahi Wabarakatuh,\n\n"
+            f"Yth. Bapak/Ibu {self.nama_guru},\n"
+            f"Berikut kami sampaikan jadwal pelaksanaan {tahap_label} pada aplikasi SIMPATIK:\n\n"
+            f"📅 Tanggal: {self.formatted_tanggal}\n"
+            f"⏰ Waktu: {self.jam_rentang}\n"
+            f"📖 Mapel/Kelas: {self.mata_pelajaran or '-'} ({self.kelas or '-'})\n"
+            f"📍 Ruang: {self.ruangan or '-'}\n"
+            f"👤 Supervisor: {self.nama_supervisor or 'Kepala Sekolah / Tim Supervisor'}\n"
+        )
+        if self.catatan:
+            catatan_clean = re.sub(r'<[^>]+>', ' ', self.catatan).strip()
+            if catatan_clean:
+                pesan += f"📝 Catatan: {catatan_clean}\n"
+
+        pesan += "\nMohon mempersiapkan modul ajar dan perangkat pembelajaran terkait. Terima kasih."
+        return f"https://wa.me/{clean}?text={quote(pesan)}"
+
+    def __repr__(self):
+        return f"<JadwalSupervisi {self.nama_guru} ({self.tanggal_supervisi}) [{self.status}]>"

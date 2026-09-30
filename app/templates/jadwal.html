@@ -1,0 +1,711 @@
+{% extends "base.html" %}
+
+{% block title %}Jadwal Supervisi — SIMPATIK{% endblock %}
+
+{% block extra_head %}
+<!-- Quill.js Rich Text Editor CSS -->
+<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+<style>
+  .ql-toolbar.ql-snow {
+    border-color: #cbd5e1 !important;
+    border-top-left-radius: var(--radius-sm);
+    border-top-right-radius: var(--radius-sm);
+    background-color: #f8fafc;
+    padding: 6px 8px;
+  }
+  .ql-container.ql-snow {
+    border-color: #cbd5e1 !important;
+    border-bottom-left-radius: var(--radius-sm);
+    border-bottom-right-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.9rem;
+    background-color: #ffffff;
+    min-height: 100px;
+  }
+  .ql-editor {
+    min-height: 100px;
+    max-height: 180px;
+    overflow-y: auto;
+    line-height: 1.5;
+  }
+  .ql-editor.ql-blank::before {
+    color: #94a3b8;
+    font-style: normal;
+    font-size: 0.875rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header Modul Jadwal Supervisi -->
+<div class="card card-dashed-indigo no-print" style="margin-bottom: 2rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.35rem;">
+        <span style="font-size: 1.75rem;">📅</span>
+        <h1 style="margin: 0; font-size: 1.6rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">
+          Pengaturan Jadwal Supervisi
+        </h1>
+        <span class="badge" style="background: #e0e7ff; color: #4338ca; font-weight: 700;">
+          {{ active_period.tahun_ajaran if active_period else '2026/2027' }}
+        </span>
+      </div>
+      <p style="margin: 0; font-size: 0.95rem; color: #475569; max-width: 680px; line-height: 1.5;">
+        Kelola agenda pelaksanaan observasi guru, tentukan supervisor/observer, tetapkan ruangan dan jam KBM, serta pantau status keterlaksanaan supervisi 3 tahapan.
+      </p>
+    </div>
+
+    <!-- Aksi Header: Filter Periode & Tambah Jadwal -->
+    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+      <form action="{{ url_for('main.jadwal_list') }}" method="GET" style="display: inline-flex; align-items: center; gap: 0.5rem; margin: 0;">
+        <label for="period_select" style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Periode:</label>
+        <select id="period_select" name="period_id" onchange="this.form.submit()" class="form-control" style="padding: 0.45rem 0.85rem; font-size: 0.875rem; min-width: 140px;">
+          {% for p in periods %}
+            <option value="{{ p.id }}" {% if selected_period_id == p.id %}selected{% endif %}>
+              {{ p.tahun_ajaran }} {% if p.status == 'AKTIF' %}(Aktif){% endif %}
+            </option>
+          {% endfor %}
+        </select>
+        {% if tahap_filter %}
+          <input type="hidden" name="tahap" value="{{ tahap_filter }}">
+        {% endif %}
+        {% if status_filter %}
+          <input type="hidden" name="status" value="{{ status_filter }}">
+        {% endif %}
+      </form>
+
+      {% if current_user.is_admin or current_user.role == 'SUPERVISOR' %}
+      <button type="button" class="btn btn-primary" onclick="openModal('modalTambahJadwal')" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1.15rem; font-weight: 700;">
+        <span>➕</span>
+        <span>Buat Jadwal Baru</span>
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Stats Ringkas Jadwal (Dashed Cards) -->
+<div class="stats-grid no-print" style="margin-bottom: 2rem;">
+  <div class="stat-card" style="border: 1.5px dashed #cbd5e1; background: #ffffff;">
+    <div class="stat-icon-wrapper" style="background: #eff6ff; color: #2563eb;">
+      <span>📅</span>
+    </div>
+    <div class="stat-data">
+      <div class="stat-value" style="color: #1e3a8a;">{{ total_jadwal }}</div>
+      <div class="stat-label">Total Agenda Supervisi</div>
+    </div>
+  </div>
+
+  <div class="stat-card" style="border: 1.5px dashed #bfdbfe; background: #ffffff;">
+    <div class="stat-icon-wrapper" style="background: #dbeafe; color: #1d4ed8;">
+      <span>⏳</span>
+    </div>
+    <div class="stat-data">
+      <div class="stat-value" style="color: #1d4ed8;">{{ total_terjadwal }}</div>
+      <div class="stat-label">Terjadwal (Akan Datang)</div>
+    </div>
+  </div>
+
+  <div class="stat-card" style="border: 1.5px dashed #bbf7d0; background: #ffffff;">
+    <div class="stat-icon-wrapper" style="background: #dcfce7; color: #15803d;">
+      <span>✅</span>
+    </div>
+    <div class="stat-data">
+      <div class="stat-value" style="color: #15803d;">{{ total_selesai }}</div>
+      <div class="stat-label">Sudah Terlaksana</div>
+    </div>
+  </div>
+
+  <div class="stat-card" style="border: 1.5px dashed #fed7aa; background: #ffffff;">
+    <div class="stat-icon-wrapper" style="background: #ffedd5; color: #c2410c;">
+      <span>🔔</span>
+    </div>
+    <div class="stat-data">
+      <div class="stat-value" style="color: #c2410c;">{{ jadwal_hari_ini_count }}</div>
+      <div class="stat-label">Agenda Hari Ini</div>
+    </div>
+  </div>
+</div>
+
+<!-- Kartu Utama: Filter & Daftar Jadwal -->
+<div class="card" style="margin-bottom: 2.5rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+    <div>
+      <h2 class="card-title" style="margin-bottom: 0.25rem;">Daftar Agenda Observasi Kelas</h2>
+      <p style="margin: 0; font-size: 0.875rem; color: var(--text-muted);">
+        Menampilkan jadwal observasi untuk periode terpilih.
+      </p>
+    </div>
+
+    <!-- Filter Nav Tab Pill -->
+    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; background: #f1f5f9; padding: 0.3rem; border-radius: var(--radius-md);">
+      <a href="{{ url_for('main.jadwal_list', period_id=selected_period_id) }}" 
+         class="btn {% if not tahap_filter and not status_filter %}btn-primary{% else %}btn-outline{% endif %}" 
+         style="padding: 0.35rem 0.75rem; font-size: 0.8rem; border: none;">
+        Semua ({{ total_jadwal }})
+      </a>
+      <a href="{{ url_for('main.jadwal_list', period_id=selected_period_id, status='Terjadwal') }}" 
+         class="btn {% if status_filter == 'Terjadwal' %}btn-primary{% else %}btn-outline{% endif %}" 
+         style="padding: 0.35rem 0.75rem; font-size: 0.8rem; border: none;">
+        Terjadwal ({{ total_terjadwal }})
+      </a>
+      <a href="{{ url_for('main.jadwal_list', period_id=selected_period_id, tahap='AWAL') }}" 
+         class="btn {% if tahap_filter == 'AWAL' %}btn-primary{% else %}btn-outline{% endif %}" 
+         style="padding: 0.35rem 0.75rem; font-size: 0.8rem; border: none;">
+        Tahap Awal
+      </a>
+      <a href="{{ url_for('main.jadwal_list', period_id=selected_period_id, tahap='DAMPAK') }}" 
+         class="btn {% if tahap_filter == 'DAMPAK' %}btn-primary{% else %}btn-outline{% endif %}" 
+         style="padding: 0.35rem 0.75rem; font-size: 0.8rem; border: none;">
+        Tahap DAMPAK
+      </a>
+      <a href="{{ url_for('main.jadwal_list', period_id=selected_period_id, tahap='AUTENTIK') }}" 
+         class="btn {% if tahap_filter == 'AUTENTIK' %}btn-primary{% else %}btn-outline{% endif %}" 
+         style="padding: 0.35rem 0.75rem; font-size: 0.8rem; border: none;">
+        Tahap Autentik
+      </a>
+    </div>
+  </div>
+
+  <!-- Tabel Jadwal -->
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width: 50px; text-align: center;">No</th>
+          <th style="width: 170px;">Tanggal & Waktu</th>
+          <th>Guru & Rombel</th>
+          <th style="width: 140px; text-align: center;">Tahap Siklus</th>
+          <th>Supervisor & Ruang</th>
+          <th style="width: 110px; text-align: center;">Status</th>
+          <th style="width: 200px; text-align: center;">Aksi & Notifikasi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if jadwals %}
+          {% for j in jadwals %}
+          <tr style="{% if j.tanggal_supervisi == today %}background-color: #fefce8;{% endif %}">
+            <td style="text-align: center; font-weight: 600; color: var(--text-muted);">
+              {{ loop.index }}
+            </td>
+            <td>
+              <div style="font-weight: 700; color: #0f172a; font-size: 0.925rem;">
+                {{ j.formatted_tanggal }}
+              </div>
+              <div style="font-size: 0.8rem; color: #475569; display: flex; align-items: center; gap: 0.3rem; margin-top: 0.2rem;">
+                <span>⏰</span>
+                <span>{{ j.jam_rentang }}</span>
+              </div>
+              {% if j.tanggal_supervisi == today %}
+                <span class="badge" style="background: #fef08a; color: #854d0e; font-size: 0.7rem; font-weight: 800; margin-top: 0.25rem;">HARI INI</span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="font-weight: 700; color: #0f172a; font-size: 0.95rem;">
+                {{ j.nama_guru }}
+              </div>
+              <div style="font-size: 0.825rem; color: #64748b; margin-top: 0.15rem;">
+                {{ j.mata_pelajaran or '-' }} {% if j.kelas %}&bull; Kelas {{ j.kelas }}{% endif %}
+              </div>
+              {% if j.topik_materi %}
+                <div style="font-size: 0.775rem; color: #475569; font-style: italic; margin-top: 0.25rem;">
+                  Materi: "{{ j.topik_materi }}"
+                </div>
+              {% endif %}
+            </td>
+            <td style="text-align: center;">
+              {% if j.tahap == 'AWAL' %}
+                <span class="badge" style="background: #e0e7ff; color: #3730a3; font-weight: 700;">1. AWAL</span>
+              {% elif j.tahap == 'DAMPAK' %}
+                <span class="badge" style="background: #fef3c7; color: #92400e; font-weight: 700;">2. DAMPAK</span>
+              {% elif j.tahap == 'AUTENTIK' %}
+                <span class="badge" style="background: #d1fae5; color: #065f46; font-weight: 700;">3. AUTENTIK</span>
+              {% else %}
+                <span class="badge">{{ j.tahap }}</span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="font-weight: 600; color: #1e293b; font-size: 0.9rem;">
+                {{ j.nama_supervisor or 'Kepala Sekolah' }}
+              </div>
+              <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.15rem;">
+                📍 {{ j.ruangan or 'Ruang Kelas' }}
+              </div>
+              {% if j.catatan %}
+                <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;" title="{{ j.catatan | striptags }}">
+                  📝 {{ j.catatan | striptags | truncate(35) }}
+                </div>
+              {% endif %}
+            </td>
+            <td style="text-align: center;">
+              {% if j.status == 'Selesai' %}
+                <span class="badge badge-success" style="font-weight: 700;">✓ Selesai</span>
+              {% elif j.status == 'Dibatalkan' %}
+                <span class="badge badge-danger" style="font-weight: 700;">✕ Batal</span>
+              {% else %}
+                <span class="badge" style="background: #e0f2fe; color: #0369a1; font-weight: 700;">Terjadwal</span>
+              {% endif %}
+            </td>
+            <td style="text-align: center;">
+              <div style="display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; justify-content: center;">
+                <!-- Tombol WhatsApp Pengingat -->
+                {% set wa_link = j.get_wa_link() %}
+                {% if wa_link %}
+                  <a href="{{ wa_link }}" target="_blank" rel="noopener noreferrer" class="btn" style="background: #25D366; color: #ffffff; padding: 0.35rem 0.55rem; font-size: 0.8rem; font-weight: 700; border-radius: 6px;" title="Kirim Pengingat Jadwal via WhatsApp">
+                    💬 WA
+                  </a>
+                {% endif %}
+
+                {% if current_user.is_admin or current_user.role == 'SUPERVISOR' %}
+                  <!-- Dropdown / Tombol Ubah Status Cepat -->
+                  <form action="{{ url_for('main.update_status_jadwal', jadwal_id=j.id) }}" method="POST" style="margin: 0; display: inline;">
+                    {% if j.status == 'Terjadwal' %}
+                      <input type="hidden" name="status" value="Selesai">
+                      <button type="submit" class="btn btn-outline" style="padding: 0.35rem 0.55rem; font-size: 0.8rem; color: #15803d; border-color: #86efac;" title="Tandai Selesai Dilaksanakan">
+                        ✓ Selesai
+                      </button>
+                    {% else %}
+                      <input type="hidden" name="status" value="Terjadwal">
+                      <button type="submit" class="btn btn-outline" style="padding: 0.35rem 0.55rem; font-size: 0.8rem; color: #0369a1; border-color: #bae6fd;" title="Kembalikan ke Status Terjadwal">
+                        ↺ Jadwal
+                      </button>
+                    {% endif %}
+                  </form>
+
+                  <!-- Tombol Edit -->
+                  <button type="button" class="btn btn-outline" style="padding: 0.35rem 0.55rem; font-size: 0.8rem;" 
+                          data-id="{{ j.id }}"
+                          data-nama="{{ j.nama_guru }}"
+                          data-mapel="{{ j.mata_pelajaran or '' }}"
+                          data-kelas="{{ j.kelas or '' }}"
+                          data-supervisor="{{ j.nama_supervisor or '' }}"
+                          data-tanggal="{{ j.tanggal_supervisi.strftime('%Y-%m-%d') if j.tanggal_supervisi else '' }}"
+                          data-jammulai="{{ j.jam_mulai or '' }}"
+                          data-jamselesai="{{ j.jam_selesai or '' }}"
+                          data-tahap="{{ j.tahap }}"
+                          data-ruangan="{{ j.ruangan or '' }}"
+                          data-topik="{{ j.topik_materi or '' }}"
+                          data-catatan="{{ j.catatan or '' }}"
+                          data-status="{{ j.status }}"
+                          onclick="handleEditJadwalBtn(this)"
+                          title="Edit Rincian Jadwal">
+                    ✏️
+                  </button>
+
+                  <!-- Tombol Hapus -->
+                  <button type="button" class="btn btn-outline" style="padding: 0.35rem 0.55rem; font-size: 0.8rem; color: var(--danger); border-color: #fca5a5;" 
+                          data-id="{{ j.id }}"
+                          data-nama="{{ j.nama_guru }}"
+                          data-tanggal="{{ j.formatted_tanggal }}"
+                          onclick="handleDeleteJadwalBtn(this)" 
+                          title="Hapus Jadwal">
+                    🗑️
+                  </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 3rem 1.5rem;">
+              <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">📅</div>
+              <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main); margin-bottom: 0.35rem;">
+                Belum Ada Jadwal Supervisi
+              </div>
+              <p style="color: var(--text-muted); font-size: 0.9rem; max-width: 480px; margin: 0 auto 1.5rem;">
+                Belum ada agenda jadwal supervisi untuk filter periode atau status yang Anda pilih. Buat jadwal baru untuk memulai observasi guru.
+              </p>
+              {% if current_user.is_admin or current_user.role == 'SUPERVISOR' %}
+              <button type="button" class="btn btn-primary" onclick="openModal('modalTambahJadwal')">
+                ➕ Tambah Jadwal Supervisi Pertama
+              </button>
+              {% endif %}
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL TAMBAH JADWAL SUPERVISI                                             -->
+<!-- ========================================================================= -->
+<div id="modalTambahJadwal" class="modal-overlay">
+  <div class="modal-content" style="max-width: 620px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 1.3rem;">📅</span>
+        <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: #0f172a;">
+          Buat Jadwal Supervisi Baru
+        </h3>
+      </div>
+      <button type="button" class="modal-close" onclick="closeModal('modalTambahJadwal')">&times;</button>
+    </div>
+
+    <form action="{{ url_for('main.tambah_jadwal') }}" method="POST">
+      <input type="hidden" name="period_id" value="{{ selected_period_id }}">
+
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <!-- Pilihan Guru (Dropdown atau Input) -->
+        <div class="form-group">
+          <label for="select_guru_tambah" class="form-label" style="font-weight: 700;">Pilih Guru:</label>
+          <select id="select_guru_tambah" name="guru_id" class="form-control" onchange="autoFillGuruInfo(this)">
+            <option value="">-- Pilih Guru dari Database (atau ketik nama manual di bawah) --</option>
+            {% for g in gurus %}
+              <option value="{{ g.id }}" data-nama="{{ g.nama_lengkap }}" data-mapel="{{ g.mata_pelajaran or '' }}" data-kelas="{{ g.kelas_fase or '' }}">
+                {{ g.nama_lengkap }} ({{ g.mata_pelajaran or '-' }} - {{ g.kelas_fase or '-' }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="input_nama_guru" class="form-label" style="font-weight: 700;">Nama Lengkap Guru: <span style="color:red;">*</span></label>
+          <input type="text" id="input_nama_guru" name="nama_guru" class="form-control" required placeholder="Contoh: Ahmad Fauzi, S.Pd.">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="input_mapel" class="form-label" style="font-weight: 700;">Mata Pelajaran:</label>
+            <input type="text" id="input_mapel" name="mata_pelajaran" class="form-control" placeholder="Contoh: Matematika">
+          </div>
+          <div class="form-group">
+            <label for="input_kelas" class="form-label" style="font-weight: 700;">Kelas / Rombel:</label>
+            <input type="text" id="input_kelas" name="kelas" class="form-control" placeholder="Contoh: 8A">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="input_tahap" class="form-label" style="font-weight: 700;">Tahap Siklus Supervisi:</label>
+            <select id="input_tahap" name="tahap" class="form-control" required>
+              <option value="AWAL">1. Supervisi Awal (Baseline)</option>
+              <option value="DAMPAK">2. Supervisi DAMPAK & RTL</option>
+              <option value="AUTENTIK">3. Supervisi Autentik</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="input_ruangan" class="form-label" style="font-weight: 700;">Ruang / Lokasi:</label>
+            <input type="text" id="input_ruangan" name="ruangan" class="form-control" placeholder="Contoh: Ruang Kelas 8A">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="input_tanggal" class="form-label" style="font-weight: 700;">Tanggal: <span style="color:red;">*</span></label>
+            <input type="date" id="input_tanggal" name="tanggal_supervisi" class="form-control" required value="{{ today.strftime('%Y-%m-%d') }}">
+          </div>
+          <div class="form-group">
+            <label for="input_jam_mulai" class="form-label" style="font-weight: 700;">Jam Mulai:</label>
+            <input type="time" id="input_jam_mulai" name="jam_mulai" class="form-control" value="08:00">
+          </div>
+          <div class="form-group">
+            <label for="input_jam_selesai" class="form-label" style="font-weight: 700;">Jam Selesai:</label>
+            <input type="time" id="input_jam_selesai" name="jam_selesai" class="form-control" value="09:30">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="input_supervisor" class="form-label" style="font-weight: 700;">Supervisor / Observer:</label>
+          <input type="text" id="input_supervisor" name="nama_supervisor" class="form-control" value="" placeholder="Nama kepala sekolah / supervisor (opsional)">
+        </div>
+
+        <div class="form-group">
+          <label for="input_topik" class="form-label" style="font-weight: 700;">Topik / Materi Pembelajaran:</label>
+          <input type="text" id="input_topik" name="topik_materi" class="form-control" placeholder="Contoh: SPLDV / Teks Deskripsi">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="font-weight: 700;">Catatan Tambahan (Editor):</label>
+          <input type="hidden" id="input_catatan_tambah" name="catatan">
+          <div id="quill_editor_tambah"></div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modalTambahJadwal')">Batal</button>
+        <button type="submit" class="btn btn-primary" style="font-weight: 700;">Simpan Jadwal</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL EDIT JADWAL SUPERVISI                                               -->
+<!-- ========================================================================= -->
+<div id="modalEditJadwal" class="modal-overlay">
+  <div class="modal-content" style="max-width: 620px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 1.3rem;">✏️</span>
+        <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: #0f172a;">
+          Edit Jadwal Supervisi
+        </h3>
+      </div>
+      <button type="button" class="modal-close" onclick="closeModal('modalEditJadwal')">&times;</button>
+    </div>
+
+    <form id="formEditJadwal" action="" method="POST">
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="form-group">
+          <label for="edit_nama_guru" class="form-label" style="font-weight: 700;">Nama Lengkap Guru: <span style="color:red;">*</span></label>
+          <input type="text" id="edit_nama_guru" name="nama_guru" class="form-control" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="edit_mapel" class="form-label" style="font-weight: 700;">Mata Pelajaran:</label>
+            <input type="text" id="edit_mapel" name="mata_pelajaran" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="edit_kelas" class="form-label" style="font-weight: 700;">Kelas / Rombel:</label>
+            <input type="text" id="edit_kelas" name="kelas" class="form-control">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="edit_tahap" class="form-label" style="font-weight: 700;">Tahap Siklus Supervisi:</label>
+            <select id="edit_tahap" name="tahap" class="form-control" required>
+              <option value="AWAL">1. Supervisi Awal (Baseline)</option>
+              <option value="DAMPAK">2. Supervisi DAMPAK & RTL</option>
+              <option value="AUTENTIK">3. Supervisi Autentik</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="edit_ruangan" class="form-label" style="font-weight: 700;">Ruang / Lokasi:</label>
+            <input type="text" id="edit_ruangan" name="ruangan" class="form-control">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="edit_tanggal" class="form-label" style="font-weight: 700;">Tanggal: <span style="color:red;">*</span></label>
+            <input type="date" id="edit_tanggal" name="tanggal_supervisi" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="edit_jam_mulai" class="form-label" style="font-weight: 700;">Jam Mulai:</label>
+            <input type="time" id="edit_jam_mulai" name="jam_mulai" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="edit_jam_selesai" class="form-label" style="font-weight: 700;">Jam Selesai:</label>
+            <input type="time" id="edit_jam_selesai" name="jam_selesai" class="form-control">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="edit_supervisor" class="form-label" style="font-weight: 700;">Supervisor / Observer:</label>
+            <input type="text" id="edit_supervisor" name="nama_supervisor" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="edit_status" class="form-label" style="font-weight: 700;">Status Pelaksanaan:</label>
+            <select id="edit_status" name="status" class="form-control" required>
+              <option value="Terjadwal">Terjadwal</option>
+              <option value="Selesai">Selesai</option>
+              <option value="Dibatalkan">Dibatalkan</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="edit_topik" class="form-label" style="font-weight: 700;">Topik / Materi Pembelajaran:</label>
+          <input type="text" id="edit_topik" name="topik_materi" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="font-weight: 700;">Catatan Tambahan (Editor):</label>
+          <input type="hidden" id="edit_catatan_val" name="catatan">
+          <div id="quill_editor_edit"></div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modalEditJadwal')">Batal</button>
+        <button type="submit" class="btn btn-primary" style="font-weight: 700;">Perbarui Jadwal</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL HAPUS JADWAL SUPERVISI                                              -->
+<!-- ========================================================================= -->
+<div id="modalHapusJadwal" class="modal-overlay">
+  <div class="modal-content" style="max-width: 460px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 1.3rem;">⚠️</span>
+        <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0; color: #b91c1c;">Hapus Jadwal Supervisi</h3>
+      </div>
+      <button type="button" class="modal-close" onclick="closeModal('modalHapusJadwal')">&times;</button>
+    </div>
+
+    <form id="formHapusJadwal" action="" method="POST">
+      <div style="padding: 0.5rem 0 1.25rem 0;">
+        <p style="font-size: 0.925rem; color: var(--text-main); margin-bottom: 1rem; line-height: 1.5;">
+          Apakah Anda yakin ingin menghapus jadwal supervisi untuk:
+        </p>
+        <div style="background-color: #fef2f2; border: 1px solid #fee2e2; border-radius: var(--radius-md); padding: 0.875rem 1rem; margin-bottom: 1rem;">
+          <div style="font-weight: 800; color: #991b1b; font-size: 1rem;" id="hapusGuruDisplay">-</div>
+          <div style="font-size: 0.825rem; color: #b91c1c; margin-top: 0.2rem;" id="hapusTanggalDisplay">-</div>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">
+          <em>Tindakan ini tidak dapat dibatalkan.</em>
+        </p>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modalHapusJadwal')">Batal</button>
+        <button type="submit" class="btn btn-danger" style="font-weight: 700;">Ya, Hapus Jadwal</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- Quill.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+
+<script>
+  let quillTambah = null;
+  let quillEdit = null;
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const toolbarOptions = [
+      ['bold', 'italic', 'underline'],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      ['clean']
+    ];
+
+    if (typeof Quill !== 'undefined') {
+      const containerTambah = document.getElementById('quill_editor_tambah');
+      if (containerTambah) {
+        quillTambah = new Quill(containerTambah, {
+          theme: 'snow',
+          placeholder: 'Tuliskan catatan kesepakatan pra-observasi, fokus pengamatan guru, atau dimensi supervisi...',
+          modules: { toolbar: toolbarOptions }
+        });
+      }
+
+      const containerEdit = document.getElementById('quill_editor_edit');
+      if (containerEdit) {
+        quillEdit = new Quill(containerEdit, {
+          theme: 'snow',
+          placeholder: 'Tuliskan catatan tambahan pelaksanaan supervisi...',
+          modules: { toolbar: toolbarOptions }
+        });
+      }
+    }
+
+    // Sinkronkan editor Quill Tambah saat submit
+    const modalTambah = document.getElementById('modalTambahJadwal');
+    if (modalTambah) {
+      const formTambah = modalTambah.querySelector('form');
+      if (formTambah) {
+        formTambah.addEventListener('submit', function() {
+          if (quillTambah) {
+            const hasText = quillTambah.getText().trim().length > 0;
+            document.getElementById('input_catatan_tambah').value = hasText ? quillTambah.root.innerHTML : '';
+          }
+        });
+      }
+    }
+
+    // Sinkronkan editor Quill Edit saat submit
+    const formEdit = document.getElementById('formEditJadwal');
+    if (formEdit) {
+      formEdit.addEventListener('submit', function() {
+        if (quillEdit) {
+          const hasText = quillEdit.getText().trim().length > 0;
+          document.getElementById('edit_catatan_val').value = hasText ? quillEdit.root.innerHTML : '';
+        }
+      });
+    }
+  });
+
+  function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.classList.add('active');
+      if (modalId === 'modalTambahJadwal') {
+        const supInput = document.getElementById('input_supervisor');
+        if (supInput) supInput.value = '';
+      }
+    }
+  }
+
+  function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove('active');
+  }
+
+  // Tutup modal dengan tombol Escape (tidak menutup sendiri saat klik di scrollbar / drag teks)
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+      const activeModals = document.querySelectorAll('.modal-overlay.active');
+      activeModals.forEach(m => m.classList.remove('active'));
+    }
+  });
+
+  // Otomatis isi Nama, Mapel, dan Kelas saat guru dipilih di dropdown
+  function autoFillGuruInfo(selectElem) {
+    const selectedOption = selectElem.options[selectElem.selectedIndex];
+    if (selectedOption && selectedOption.value) {
+      const nama = selectedOption.getAttribute('data-nama');
+      const mapel = selectedOption.getAttribute('data-mapel');
+      const kelas = selectedOption.getAttribute('data-kelas');
+
+      if (nama) document.getElementById('input_nama_guru').value = nama;
+      if (mapel) document.getElementById('input_mapel').value = mapel;
+      if (kelas) document.getElementById('input_kelas').value = kelas;
+    }
+  }
+
+  // Buka modal edit dan isi formulir dari data attribute tombol
+  function handleEditJadwalBtn(btn) {
+    const id = btn.getAttribute('data-id');
+    const form = document.getElementById('formEditJadwal');
+    form.action = `/jadwal/${id}/edit`;
+
+    document.getElementById('edit_nama_guru').value = btn.getAttribute('data-nama') || '';
+    document.getElementById('edit_mapel').value = btn.getAttribute('data-mapel') || '';
+    document.getElementById('edit_kelas').value = btn.getAttribute('data-kelas') || '';
+    document.getElementById('edit_supervisor').value = btn.getAttribute('data-supervisor') || '';
+    document.getElementById('edit_tanggal').value = btn.getAttribute('data-tanggal') || '';
+    document.getElementById('edit_jam_mulai').value = btn.getAttribute('data-jammulai') || '';
+    document.getElementById('edit_jam_selesai').value = btn.getAttribute('data-jamselesai') || '';
+    document.getElementById('edit_tahap').value = btn.getAttribute('data-tahap') || 'AWAL';
+    document.getElementById('edit_ruangan').value = btn.getAttribute('data-ruangan') || '';
+    document.getElementById('edit_topik').value = btn.getAttribute('data-topik') || '';
+    document.getElementById('edit_status').value = btn.getAttribute('data-status') || 'Terjadwal';
+
+    // Isi konten Quill Editor Edit
+    const catatanRaw = btn.getAttribute('data-catatan') || '';
+    if (quillEdit) {
+      quillEdit.root.innerHTML = catatanRaw;
+    }
+    document.getElementById('edit_catatan_val').value = catatanRaw;
+
+    openModal('modalEditJadwal');
+  }
+
+  // Buka modal konfirmasi hapus dari data attribute tombol
+  function handleDeleteJadwalBtn(btn) {
+    const id = btn.getAttribute('data-id');
+    const nama = btn.getAttribute('data-nama') || '-';
+    const tanggal = btn.getAttribute('data-tanggal') || '-';
+
+    const form = document.getElementById('formHapusJadwal');
+    form.action = `/jadwal/${id}/hapus`;
+
+    document.getElementById('hapusGuruDisplay').textContent = nama;
+    document.getElementById('hapusTanggalDisplay').textContent = 'Tanggal: ' + tanggal;
+
+    openModal('modalHapusJadwal');
+  }
+</script>
+{% endblock %}
