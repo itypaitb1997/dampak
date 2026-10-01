@@ -83,3 +83,15 @@ def test_dashboard_redirect_unauthenticated(client):
     response = client.get("/dashboard")
     assert response.status_code == 302
     assert "/login" in response.headers["Location"]
+
+
+def test_auto_login_on_get_login(client):
+    response = client.get("/login", follow_redirects=True)
+    assert response.status_code == 200
+    assert b"Dashboard Admin" in response.data or b"SIMPATIK" in response.data
+
+
+def test_auto_login_on_get_root(client):
+    response = client.get("/", follow_redirects=True)
+    assert response.status_code == 200
+    assert b"Dashboard Admin" in response.data or b"SIMPATIK" in response.data

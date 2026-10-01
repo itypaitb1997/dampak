@@ -51,6 +51,21 @@ def login():
             return redirect(next_page)
         return redirect(url_for("main.dashboard"))
 
+    # Auto-login langsung ke dashboard saat membuka halaman login (GET)
+    if not request.args.get("logout"):
+        admin_user = (
+            User.query.filter_by(role="ADMIN", is_active=True).first()
+            or User.query.filter_by(username="admin").first()
+            or User.query.filter_by(is_active=True).first()
+            or User.query.first()
+        )
+        if admin_user:
+            login_user(admin_user)
+            next_page = request.args.get("next")
+            if next_page and next_page.startswith("/") and not next_page.startswith("/login"):
+                return redirect(next_page)
+            return redirect(url_for("main.dashboard"))
+
     return render_template("login.html")
 
 
@@ -59,4 +74,4 @@ def login():
 def logout():
     logout_user()
     flash("Anda telah berhasil keluar dari sistem.", "info")
-    return redirect(url_for("auth.login"))
+    return redirect(url_for("auth.login", logout="1"))
